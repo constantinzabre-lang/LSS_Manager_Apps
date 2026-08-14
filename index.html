@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LIVING STONE SERVICE (LSS) — Gestion Atelier & Commerce</title>
+  
+  <!-- PWA Metadata -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="description" content="Logiciel de gestion globale pour Living Stone Service (LSS) - Ouagadougou, Burkina Faso">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%234f46e5'/><text x='50' y='65' font-size='50' font-weight='bold' text-anchor='middle' fill='white'>LSS</text></svg>">
+  
+  <!-- Google Fonts & Lucide Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.294.0/dist/umd/lucide.min.js"></script>
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Security PIN Lock Screen -->
+  <div id="lock-screen">
+    <img src="logo.png" alt="Living Stone Service Logo" style="width: 100px; height: 100px; object-fit: contain; margin-bottom: 10px;">
+    <div style="text-align: center;">
+      <h2 style="font-size: 22px; font-weight: 800; margin-bottom: 6px;">LIVING STONE SERVICE</h2>
+      <p style="color: var(--text-muted); font-size: 13px;">Veuillez saisir votre code PIN de sécurité</p>
+    </div>
+    <div class="pin-dots" id="pin-dots-container">
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+    </div>
+    <div class="pin-pad">
+      <button class="pin-btn" onclick="app.enterPin('1')">1</button>
+      <button class="pin-btn" onclick="app.enterPin('2')">2</button>
+      <button class="pin-btn" onclick="app.enterPin('3')">3</button>
+      <button class="pin-btn" onclick="app.enterPin('4')">4</button>
+      <button class="pin-btn" onclick="app.enterPin('5')">5</button>
+      <button class="pin-btn" onclick="app.enterPin('6')">6</button>
+      <button class="pin-btn" onclick="app.enterPin('7')">7</button>
+      <button class="pin-btn" onclick="app.enterPin('8')">8</button>
+      <button class="pin-btn" onclick="app.enterPin('9')">9</button>
+      <button class="pin-btn" onclick="app.clearPin()" style="font-size: 14px;">C</button>
+      <button class="pin-btn" onclick="app.enterPin('0')">0</button>
+      <button class="pin-btn" onclick="app.verifyPin()" style="font-size: 14px; background: var(--accent-primary);">OK</button>
+    </div>
+    <p id="pin-error-msg" style="color: var(--accent-danger); font-size: 13px; font-weight: 700; height: 20px;"></p>
+  </div>
+
+  <!-- Main Application Wrapper -->
+  <div id="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <img src="logo.png" alt="LSS Logo" class="brand-logo-img">
+        <div class="brand-text">
+          <h1>LIVING STONE</h1>
+          <p>SERVICE — MANAGER</p>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <a class="nav-item active" onclick="app.navigate('dashboard')">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Tableau de bord</span>
+        </a>
+        <a class="nav-item" onclick="app.navigate('maintenance')">
+          <i data-lucide="wrench"></i>
+          <span>Maintenance IT</span>
+        </a>
+        <a class="nav-item" onclick="app.navigate('sales')">
+          <i data-lucide="shopping-cart"></i>
+          <span>Ventes & Stock</span>
+        </a>
+        <a class="nav-item" onclick="app.navigate('projects')">
+          <i data-lucide="cpu"></i>
+          <span>Prestations & Conseils</span>
+        </a>
+        <a class="nav-item" onclick="app.navigate('academy')">
+          <i data-lucide="graduation-cap"></i>
+          <span>LSS Académie</span>
+        </a>
+        <a class="nav-item" onclick="app.navigate('invoices')">
+          <i data-lucide="file-text"></i>
+          <span>Factures & Devis</span>
+        </a>
+        <a class="nav-item" onclick="app.navigate('expenses')">
+          <i data-lucide="credit-card"></i>
+          <span>Dépenses Atelier</span>
+        </a>
+        <a class="nav-item" onclick="app.navigate('reports')">
+          <i data-lucide="bar-chart-3"></i>
+          <span>Rapports & Bilans DGI</span>
+        </a>
+        <a class="nav-item" onclick="app.navigate('clients')">
+          <i data-lucide="users"></i>
+          <span>Clients & CRM</span>
+        </a>
+        <a class="nav-item" onclick="app.navigate('settings')">
+          <i data-lucide="settings"></i>
+          <span>Paramètres & Sécurité</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-badge">
+          <div class="user-avatar" id="sidebar-avatar">ZC</div>
+          <div class="user-info">
+            <div class="name" id="sidebar-username">ZABRE S. Constantin</div>
+            <div class="role">Promoteur / Admin</div>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" style="width: 100%; justify-content: center;" onclick="app.lockApp()">
+          <i data-lucide="lock" style="width: 14px; height: 14px;"></i> Verrouiller Session
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Workspace Area -->
+    <div class="main-wrapper">
+      
+      <!-- Top Bar Navbar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="btn-icon" style="display: none;" id="mobile-menu-btn" onclick="app.toggleMobileSidebar()">
+            <i data-lucide="menu"></i>
+          </button>
+          <h2 class="page-title" id="current-page-title">Tableau de bord</h2>
+        </div>
+
+        <div class="topbar-actions">
+          <div class="status-pill" id="sync-status">
+            <span class="status-dot"></span>
+            <span>Hors-ligne (Local DB)</span>
+          </div>
+
+          <button class="btn-icon" title="Changer le thème" onclick="app.toggleTheme()">
+            <i data-lucide="sun-moon"></i>
+          </button>
+          <button class="btn-icon" title="Nouvelle Vente Rapide POS" onclick="app.navigate('sales')">
+            <i data-lucide="shopping-bag"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Dynamic Content Area -->
+      <main class="content-area">
+
+        <!-- 1. DASHBOARD VIEW -->
+        <section id="view-dashboard" class="view-section active">
+          <div class="kpi-grid">
+            <div class="kpi-card kpi-success">
+              <div class="kpi-header">
+                <span class="kpi-title">Chiffre d'Affaires TTC</span>
+                <div class="kpi-icon"><i data-lucide="dollar-sign"></i></div>
+              </div>
+              <div class="kpi-value" id="kpi-ca-ttc">0 FCFA</div>
+              <div class="kpi-subtitle">Total encaissements (Ventes + Factures)</div>
+            </div>
+
+            <div class="kpi-card kpi-info">
+              <div class="kpi-header">
+                <span class="kpi-title">Chiffre d'Affaires HT</span>
+                <div class="kpi-icon"><i data-lucide="trending-up"></i></div>
+              </div>
+              <div class="kpi-value" id="kpi-ca-ht">0 FCFA</div>
+              <div class="kpi-subtitle">Base imposable hors taxes</div>
+            </div>
+
+            <div class="kpi-card kpi-warning">
+              <div class="kpi-header">
+                <span class="kpi-title">TVA 18% Collectée</span>
+                <div class="kpi-icon"><i data-lucide="receipt"></i></div>
+              </div>
+              <div class="kpi-value" id="kpi-tva">0 FCFA</div>
+              <div class="kpi-subtitle">TVA à déclarer (CGI Burkina Faso)</div>
+            </div>
+
+            <div class="kpi-card kpi-purple">
+              <div class="kpi-header">
+                <span class="kpi-title">Bénéfice Net</span>
+                <div class="kpi-icon"><i data-lucide="pie-chart"></i></div>
+              </div>
+              <div class="kpi-value" id="kpi-net-profit">0 FCFA</div>
+              <div class="kpi-subtitle">CA HT moins dépenses atelier</div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+            <div class="panel">
+              <div class="panel-header">
+                <h3 class="panel-title"><i data-lucide="wrench"></i> Dernières Maintenances & Réparations</h3>
+                <button class="btn btn-primary btn-sm" onclick="app.openModal('modal-ticket')">+ Nouveau Ticket</button>
+              </div>
+              <div class="table-container">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Ticket ID</th>
+                      <th>Client</th>
+                      <th>Équipement</th>
+                      <th>Statut</th>
+                      <th>Total TTC</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dashboard-tickets-tbody">
+                    <!-- Dynamic Rows -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">
+                <h3 class="panel-title"><i data-lucide="alert-triangle"></i> Alertes Stock Faible</h3>
+                <button class="btn btn-secondary btn-sm" onclick="app.navigate('sales')">Voir Stock</button>
+              </div>
+              <div id="dashboard-stock-alerts">
+                <!-- Stock alerts -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. MAINTENANCE VIEW -->
+        <section id="view-maintenance" class="view-section">
+          <div class="panel">
+            <div class="panel-header">
+              <h3 class="panel-title"><i data-lucide="wrench"></i> Gestion des Tickets de Dépannage & Maintenance</h3>
+              <button class="btn btn-primary" onclick="app.openModal('modal-ticket')">
+                <i data-lucide="plus-circle"></i> Nouveau Reçu de Dépôt
+              </button>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>N° Ticket</th>
+                    <th>Date d'Arrivée</th>
+                    <th>Nom du Client</th>
+                    <th>Appareil & Panne</th>
+                    <th>Statut</th>
+                    <th>Montant TTC</th>
+                    <th>Impression / WhatsApp</th>
+                  </tr>
+                </thead>
+                <tbody id="tickets-tbody">
+                  <!-- Tickets Rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. SALES & INVENTORY (POS) VIEW -->
+        <section id="view-sales" class="view-section">
+          <div class="pos-container">
+            <div class="pos-products">
+              <div class="panel" style="margin-bottom: 0;">
+                <div class="panel-header" style="margin-bottom: 12px; padding-bottom: 8px;">
+                  <h3 class="panel-title"><i data-lucide="package"></i> Catalogue Produits</h3>
+                  <button class="btn btn-secondary btn-sm" onclick="app.openModal('modal-product')">+ Ajouter Produit</button>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                  <input type="text" class="form-control" placeholder="Rechercher par désignation ou code LSS-PRD..." oninput="app.filterProducts(this.value)">
+                </div>
+                <div class="pos-products-grid" id="pos-products-grid">
+                  <!-- Dynamic Products Grid -->
+                </div>
+              </div>
+            </div>
+
+            <div class="pos-cart">
+              <h3 class="panel-title" style="margin-bottom: 14px;"><i data-lucide="shopping-bag"></i> Caisse Rapide (POS)</h3>
+              
+              <div class="form-group" style="margin-bottom: 10px;">
+                <label class="form-label">Client</label>
+                <input type="text" class="form-control" id="pos-client-name" placeholder="Nom du client (Particulier)" value="Client Comptant">
+              </div>
+
+              <div class="form-group" style="margin-bottom: 10px;">
+                <label class="form-label">Régime TVA</label>
+                <select class="form-control" id="pos-apply-vat" onchange="app.renderCart()">
+                  <option value="true">Appliquer TVA 18% (CGI)</option>
+                  <option value="false">Sans TVA / Exonéré (0%)</option>
+                </select>
+              </div>
+
+              <div class="cart-items" id="cart-items-container">
+                <p style="text-align: center; color: var(--text-muted); margin-top: 40px;">Aucun article dans le panier</p>
+              </div>
+
+              <div class="cart-summary">
+                <div class="summary-row">
+                  <span>Sous-total HT</span>
+                  <span id="cart-subtotal-ht">0 FCFA</span>
+                </div>
+                <div class="summary-row">
+                  <span>TVA (18%)</span>
+                  <span id="cart-vat-amount">0 FCFA</span>
+                </div>
+                <div class="summary-row total">
+                  <span>Total TTC</span>
+                  <span id="cart-total-ttc">0 FCFA</span>
+                </div>
+                <button class="btn btn-success" style="width: 100%; justify-content: center; margin-top: 14px;" onclick="app.checkoutPOS()">
+                  <i data-lucide="check-circle"></i> Enregistrer & Imprimer Vente
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. PROJECTS / PRESTATIONS IT VIEW -->
+        <section id="view-projects" class="view-section">
+          <div class="panel">
+            <div class="panel-header">
+              <h3 class="panel-title"><i data-lucide="cpu"></i> Audit, Installation Réseau & Contrats IT</h3>
+              <button class="btn btn-primary" onclick="app.openModal('modal-project')">
+                <i data-lucide="plus-circle"></i> Nouveau Projet IT
+              </button>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>N° Projet</th>
+                    <th>Intitulé du Projet</th>
+                    <th>Client</th>
+                    <th>Domaine</th>
+                    <th>Budget TTC</th>
+                    <th>Statut</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="projects-tbody">
+                  <!-- Dynamic Projects -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. ACADEMY / STAGES & FORMATIONS VIEW -->
+        <section id="view-academy" class="view-section">
+          <div class="panel">
+            <div class="panel-header">
+              <h3 class="panel-title"><i data-lucide="graduation-cap"></i> LSS Académie — Inscription & Attestations de Stage</h3>
+              <button class="btn btn-primary" onclick="app.openModal('modal-student')">
+                <i data-lucide="user-plus"></i> Inscrire un Apprenant
+              </button>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Matricule</th>
+                    <th>Nom & Prénom</th>
+                    <th>Filière de Formation</th>
+                    <th>Période</th>
+                    <th>Encadreur</th>
+                    <th>Statut</th>
+                    <th>Attestation A4</th>
+                  </tr>
+                </thead>
+                <tbody id="students-tbody">
+                  <!-- Dynamic Students -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. INVOICES & ESTIMATES (DGI BURKINA FASO) VIEW -->
+        <section id="view-invoices" class="view-section">
+          <div class="panel">
+            <div class="panel-header">
+              <h3 class="panel-title"><i data-lucide="file-text"></i> Factures & Devis Homologués (DGI Burkina Faso)</h3>
+              <button class="btn btn-primary" onclick="app.openModal('modal-invoice')">
+                <i data-lucide="plus-circle"></i> Créer Devis / Facture
+              </button>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>N° Document</th>
+                    <th>Type</th>
+                    <th>Client / IFU</th>
+                    <th>Total HT</th>
+                    <th>TVA (18%)</th>
+                    <th>Total TTC</th>
+                    <th>Statut</th>
+                    <th>Imprimer / Envoyer</th>
+                  </tr>
+                </thead>
+                <tbody id="invoices-tbody">
+                  <!-- Dynamic Invoices -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 7. EXPENSES VIEW -->
+        <section id="view-expenses" class="view-section">
+          <div class="panel">
+            <div class="panel-header">
+              <h3 class="panel-title"><i data-lucide="credit-card"></i> Journal des Dépenses & Charges Atelier</h3>
+              <button class="btn btn-primary" onclick="app.openModal('modal-expense')">
+                <i data-lucide="plus-circle"></i> Enregistrer une Dépense
+              </button>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>N° Dépense</th>
+                    <th>Date</th>
+                    <th>Catégorie</th>
+                    <th>Description</th>
+                    <th>Montant FCFA</th>
+                    <th>Mode Paiement</th>
+                  </tr>
+                </thead>
+                <tbody id="expenses-tbody">
+                  <!-- Dynamic Expenses -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 8. FINANCIAL REPORTS (DGI) VIEW -->
+        <section id="view-reports" class="view-section">
+          <div class="panel">
+            <div class="panel-header">
+              <h3 class="panel-title"><i data-lucide="bar-chart-3"></i> Bilans Financiers & Déclarations DGI</h3>
+              <div style="display: flex; gap: 12px;">
+                <select class="form-control" id="report-period-select" onchange="app.renderFinancialReport()">
+                  <option value="month">Ce Mois-ci</option>
+                  <option value="quarter">Ce Trimestre (T3 2026)</option>
+                  <option value="year">Année Fiscale 2026</option>
+                </select>
+                <button class="btn btn-success" onclick="app.printFinancialReport()">
+                  <i data-lucide="printer"></i> Imprimer Bilan A4
+                </button>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+              <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--glass-border);">
+                <h4 style="font-size: 15px; font-weight: 700; margin-bottom: 12px; color: var(--accent-success);">Encaissements & Chiffre d'Affaires</h4>
+                <p style="font-size: 26px; font-weight: 800;" id="report-total-ca">0 FCFA</p>
+                <div style="margin-top: 10px; font-size: 13px; color: var(--text-secondary);">
+                  <div>Total HT: <strong id="report-ca-ht">0 FCFA</strong></div>
+                  <div>TVA 18% Collectée: <strong id="report-ca-tva">0 FCFA</strong></div>
+                </div>
+              </div>
+
+              <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--glass-border);">
+                <h4 style="font-size: 15px; font-weight: 700; margin-bottom: 12px; color: var(--accent-danger);">Dépenses & Charges Exploitation</h4>
+                <p style="font-size: 26px; font-weight: 800;" id="report-total-dep">0 FCFA</p>
+                <div style="margin-top: 10px; font-size: 13px; color: var(--text-secondary);">
+                  <div>Bénéfice Net Exploitation: <strong id="report-net-profit" style="color: var(--accent-purple);">0 FCFA</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SVG Visual Chart -->
+            <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--glass-border); text-align: center;">
+              <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 16px;">Histogramme Comparatif Recettes vs Dépenses</h4>
+              <div id="chart-container" style="height: 180px; display: flex; align-items: flex-end; justify-content: center; gap: 40px; padding: 10px;">
+                <!-- Dynamic SVG Bars -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 9. CLIENTS CRM VIEW -->
+        <section id="view-clients" class="view-section">
+          <div class="panel">
+            <div class="panel-header">
+              <h3 class="panel-title"><i data-lucide="users"></i> Répertoire Clients & Contact Direct WhatsApp</h3>
+              <button class="btn btn-primary" onclick="app.openModal('modal-client')">
+                <i data-lucide="user-plus"></i> Nouveau Client
+              </button>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ID Client</th>
+                    <th>Nom / Raison Sociale</th>
+                    <th>Type</th>
+                    <th>Téléphone</th>
+                    <th>IFU</th>
+                    <th>Adresse</th>
+                    <th>Contact WhatsApp</th>
+                  </tr>
+                </thead>
+                <tbody id="clients-tbody">
+                  <!-- Dynamic Clients -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 10. SETTINGS VIEW -->
+        <section id="view-settings" class="view-section">
+          <div class="panel">
+            <div class="panel-header">
+              <h3 class="panel-title"><i data-lucide="settings"></i> Configuration Administrateur & Base de Données</h3>
+            </div>
+            
+            <form id="settings-form" onsubmit="app.saveSettings(event)">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label">Nom de l'Entreprise</label>
+                  <input type="text" class="form-control" id="set-company-name" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Nom du Promoteur</label>
+                  <input type="text" class="form-control" id="set-promoter-name" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Téléphone(s) Officiel(s) (Affiché sur reçus & attestations)</label>
+                  <input type="text" class="form-control" id="set-phone" placeholder="+226 70 00 00 00 / +226 76 00 00 00" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Email Officiel</label>
+                  <input type="email" class="form-control" id="set-email" placeholder="contactlivingstoneservice@gmail.com" required>
+                </div>
+                <div class="form-group full-width">
+                  <label class="form-label">Devise / Slogan (Affiché au pied de page de tous les documents A4)</label>
+                  <input type="text" class="form-control" id="set-motto" placeholder="L'Excellence & la Qualité au Service de l'Innovation IT" required>
+                </div>
+                <div class="form-group full-width">
+                  <label class="form-label">Boîte Postale (BP)</label>
+                  <input type="text" class="form-control" id="set-po-box" placeholder="06 BV 30379 Ouaga Zogona 10020 OUAGADOUGOU BURKINA FASO" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Numéro IFU (DGI Burkina Faso)</label>
+                  <input type="text" class="form-control" id="set-ifu" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Date d'Immatriculation IFU</label>
+                  <input type="date" class="form-control" id="set-ifu-date" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Numéro RCCM</label>
+                  <input type="text" class="form-control" id="set-rccm" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Date d'Immatriculation RCCM</label>
+                  <input type="date" class="form-control" id="set-rccm-date" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Code PIN Administrateur (Accès Total - Défaut: 1234)</label>
+                  <input type="password" class="form-control" id="set-admin-pin" maxlength="6" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Code PIN Secrétaire (Accès Opérationnel - Défaut: 5678)</label>
+                  <input type="password" class="form-control" id="set-staff-pin" maxlength="6" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Taux TVA (%)</label>
+                  <input type="number" class="form-control" id="set-vat-rate" value="18" readonly>
+                </div>
+              </div>
+
+              <h4 style="font-size: 15px; font-weight: 700; margin: 24px 0 12px 0; color: var(--accent-primary); display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="rotate-ccw"></i> Compteurs de Numérotation & Remise à Zéro (Nouvel Exercice)
+              </h4>
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">
+                  Réinitialise la séquence de numérotation automatique des documents (Tickets, Factures, Devis, Attestations, Dépenses) à 001 pour le début d'un nouvel exercice financier.
+                </p>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label class="form-label">Compteur Tickets Maintenance</label>
+                    <div style="display: flex; gap: 8px;">
+                      <input type="number" class="form-control" id="cnt-ticket" value="0" min="0">
+                      <button type="button" class="btn btn-secondary btn-sm" onclick="app.resetCounter('tickets')">À Zéro</button>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Compteur Factures & Devis DGI</label>
+                    <div style="display: flex; gap: 8px;">
+                      <input type="number" class="form-control" id="cnt-invoice" value="0" min="0">
+                      <button type="button" class="btn btn-secondary btn-sm" onclick="app.resetCounter('invoices')">À Zéro</button>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Compteur Stagiaires (Académie)</label>
+                    <div style="display: flex; gap: 8px;">
+                      <input type="number" class="form-control" id="cnt-student" value="0" min="0">
+                      <button type="button" class="btn btn-secondary btn-sm" onclick="app.resetCounter('students')">À Zéro</button>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Compteur Dépenses & Projets</label>
+                    <div style="display: flex; gap: 8px;">
+                      <input type="number" class="form-control" id="cnt-expense" value="0" min="0">
+                      <button type="button" class="btn btn-secondary btn-sm" onclick="app.resetCounter('expenses')">À Zéro</button>
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-warning btn-sm" onclick="app.resetAllCounters()" style="margin-top: 14px;">
+                  <i data-lucide="refresh-cw"></i> Remettre TOUS les Compteurs à Zéro (Nouvelle Année Fiscale)
+                </button>
+              </div>
+
+              <h4 style="font-size: 15px; font-weight: 700; margin: 24px 0 12px 0; color: var(--accent-primary); display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="cloud"></i> Synchronisation Supabase Cloud (Multi-Appareils en Temps Réel)
+              </h4>
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">
+                  Connectez votre projet Supabase gratuit pour synchroniser instantanément les tickets, factures et ventes entre plusieurs ordinateurs, tablettes ou téléphones.
+                </p>
+                <div class="form-grid">
+                  <div class="form-group full-width">
+                    <label class="form-label">URL du Projet Supabase (ex: https://xyz.supabase.co)</label>
+                    <input type="text" class="form-control" id="set-supabase-url" placeholder="https://xyz.supabase.co">
+                  </div>
+                  <div class="form-group full-width">
+                    <label class="form-label">Clé Publique Anon (API Key)</label>
+                    <input type="password" class="form-control" id="set-supabase-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6...">
+                  </div>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="app.pullFromSupabase(true)" style="margin-top: 12px;">
+                  <i data-lucide="refresh-cw"></i> 🔄 Télécharger les Données Cloud Maintenant
+                </button>
+              </div>
+
+              <h4 style="font-size: 15px; font-weight: 700; margin: 28px 0 12px 0; color: #ef4444; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="alert-triangle"></i> Zone de Danger — Purge & Réinitialisation de la Base de Données
+              </h4>
+              <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); padding: 18px; border-radius: 8px; margin-bottom: 24px;">
+                <p style="font-size: 13px; color: #f87171; margin-bottom: 14px; font-weight: 500;">
+                  ⚠️ Attention : La purge supprimera définitivement tout l'historique des tickets, factures, devis, ventes, stagiaires, clients et dépenses, et remettra la numérotation automatique à 001. Les paramètres officiels de l'entreprise (Nom, IFU, RCCM, Logo, PIN) seront conservés.
+                </p>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                  <button type="button" class="btn btn-danger" onclick="app.purgeAllData()" style="background: #dc2626; border-color: #dc2626;">
+                    <i data-lucide="trash-2"></i> 🧹 Purger & Réinitialiser Toute la Base à Zéro
+                  </button>
+                  <button type="button" class="btn btn-secondary" onclick="app.resetDatabase()">
+                    <i data-lucide="rotate-ccw"></i> Réinitialiser aux Données Démo
+                  </button>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 16px; margin-top: 24px;">
+                <button type="submit" class="btn btn-primary">Enregistrer les Paramètres</button>
+                <button type="button" class="btn btn-secondary" onclick="app.exportDatabaseJSON()">Exporter Sauvegarde JSON</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- MODALS CONTAINER -->
+
+  <!-- 1. Modal Ticket Maintenance -->
+  <div class="modal-backdrop" id="modal-ticket">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Créer / Modifier Reçu de Dépôt Ticket</h3>
+        <button class="btn-icon" onclick="app.closeModal('modal-ticket')"><i data-lucide="x"></i></button>
+      </div>
+      <form onsubmit="app.saveTicket(event)">
+        <input type="hidden" id="ticket-form-id">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Nom du Client</label>
+            <input type="text" class="form-control" id="tkt-client-name" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Téléphone WhatsApp</label>
+            <input type="text" class="form-control" id="tkt-client-phone" placeholder="+226 70 00 00 00" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Modèle Équipement / PC</label>
+            <input type="text" class="form-control" id="tkt-device" placeholder="Ex: HP ProBook 450 G8" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Numéro de Série / Accessoires</label>
+            <input type="text" class="form-control" id="tkt-serial" placeholder="Chargeur, Sacoche, Souris">
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label">Description de la Panne & Symptômes</label>
+            <textarea class="form-control" id="tkt-problem" rows="3" required></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Statut</label>
+            <select class="form-control" id="tkt-status">
+              <option value="Reçu">Reçu</option>
+              <option value="Diagnostic">Diagnostic</option>
+              <option value="En cours">En cours</option>
+              <option value="Prêt">Prêt</option>
+              <option value="Livré">Livré</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Montant HT (FCFA)</label>
+            <input type="number" class="form-control" id="tkt-cost-ht" value="0" oninput="app.calcTicketTTC()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Application de la TVA</label>
+            <select class="form-control" id="tkt-apply-vat" onchange="app.calcTicketTTC()">
+              <option value="true">Appliquer TVA 18% (CGI)</option>
+              <option value="false">Exonéré de TVA (0%)</option>
+            </select>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('modal-ticket')">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer le Ticket</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. Modal Produit Stock -->
+  <div class="modal-backdrop" id="modal-product">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Ajouter un Article au Stock</h3>
+        <button class="btn-icon" onclick="app.closeModal('modal-product')"><i data-lucide="x"></i></button>
+      </div>
+      <form onsubmit="app.saveProduct(event)">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label class="form-label">Désignation du Produit</label>
+            <input type="text" class="form-control" id="prd-name" placeholder="Ex: SSD KingSton 480GB SATA" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Catégorie</label>
+            <select class="form-control" id="prd-category">
+              <option value="Matériel IT">Matériel IT</option>
+              <option value="Consommables">Consommables</option>
+              <option value="Accessoires">Accessoires</option>
+              <option value="Bureautique">Bureautique</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Prix d'Achat HT (FCFA)</label>
+            <input type="number" class="form-control" id="prd-buy-price" value="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Prix de Vente HT (FCFA)</label>
+            <input type="number" class="form-control" id="prd-sell-ht" value="0" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Quantité en Stock</label>
+            <input type="number" class="form-control" id="prd-qty" value="1" required>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('modal-product')">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer Article</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. Modal Stagiaire -->
+  <div class="modal-backdrop" id="modal-student">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Inscrire un Apprenant (LSS Académie)</h3>
+        <button class="btn-icon" onclick="app.closeModal('modal-student')"><i data-lucide="x"></i></button>
+      </div>
+      <form onsubmit="app.saveStudent(event)">
+        <input type="hidden" id="stg-id">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label class="form-label">Nom & Prénom Complet</label>
+            <input type="text" class="form-control" id="stg-name" placeholder="Ex: KABORE Wendkouni Jean" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Téléphone</label>
+            <input type="text" class="form-control" id="stg-phone" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Filière / Programme</label>
+            <select class="form-control" id="stg-track">
+              <option value="Initiation en Maintenance Informatique">Initiation en Maintenance Informatique</option>
+              <option value="Secrétariat Numérique">Secrétariat Numérique</option>
+              <option value="Maintenance Informatique & Secrétariat Numérique">Maintenance Informatique & Secrétariat Numérique</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date de Début</label>
+            <input type="date" class="form-control" id="stg-start" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date de Fin Prévue</label>
+            <input type="date" class="form-control" id="stg-end" required>
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label">Compétences Pratiques Validées (Une compétence par ligne)</label>
+            <textarea class="form-control" id="stg-skills" rows="4" placeholder="• Diagnostic matériel et dépannage...&#10;• Démontage et maintenance préventive..."></textarea>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('modal-student')">Annuler</button>
+          <button type="submit" class="btn btn-primary">Valider Inscription</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. Modal Facture / Devis -->
+  <div class="modal-backdrop" id="modal-invoice">
+    <div class="modal-content" style="max-width: 750px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Créer Facture ou Devis (DGI)</h3>
+        <button class="btn-icon" onclick="app.closeModal('modal-invoice')"><i data-lucide="x"></i></button>
+      </div>
+      <form onsubmit="app.saveInvoice(event)">
+        <input type="hidden" id="inv-form-id">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Type de Document</label>
+            <select class="form-control" id="inv-doc-type">
+              <option value="devis">Devis Estimatif</option>
+              <option value="facture">Facture Officielle</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nom du Client</label>
+            <input type="text" class="form-control" id="inv-client-name" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">IFU Client (Optionnel)</label>
+            <input type="text" class="form-control" id="inv-client-ifu" placeholder="00123456X">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Téléphone Client</label>
+            <input type="text" class="form-control" id="inv-client-phone">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Application de la TVA</label>
+            <select class="form-control" id="inv-apply-vat">
+              <option value="true">Appliquer TVA 18% (CGI Burkina Faso)</option>
+              <option value="false">Exonéré de TVA (0% TVA)</option>
+            </select>
+          </div>
+        </div>
+
+        <h4 style="font-size: 14px; font-weight: 700; margin: 16px 0 10px 0;">Lignes de Prestation / Articles</h4>
+        <div id="inv-items-wrapper">
+          <div class="form-grid inv-item-row" style="margin-bottom: 8px;">
+            <input type="text" class="form-control item-desc" placeholder="Description prestation / article" style="grid-column: span 2;" required>
+            <input type="number" class="form-control item-qty" placeholder="Qté" value="1" min="1" required>
+            <input type="number" class="form-control item-price" placeholder="Prix HT (FCFA)" required>
+          </div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="app.addInvoiceRow()" style="margin-bottom: 20px;">+ Ajouter Ligne</button>
+
+        <div style="display: flex; justify-content: flex-end; gap: 12px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('modal-invoice')">Annuler</button>
+          <button type="submit" class="btn btn-primary">Générer Document DGI</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 5. Modal Dépense -->
+  <div class="modal-backdrop" id="modal-expense">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Enregistrer une Dépense Atelier</h3>
+        <button class="btn-icon" onclick="app.closeModal('modal-expense')"><i data-lucide="x"></i></button>
+      </div>
+      <form onsubmit="app.saveExpense(event)">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Catégorie</label>
+            <select class="form-control" id="exp-category">
+              <option value="Achats pièces IT">Achats pièces IT</option>
+              <option value="Loyer Atelier">Loyer Atelier</option>
+              <option value="SONABEL / ONEA">SONABEL / ONEA</option>
+              <option value="Internet / Telecom">Internet / Telecom</option>
+              <option value="Transport & Logistique">Transport & Logistique</option>
+              <option value="Salaires & Prime">Salaires & Prime</option>
+              <option value="Autres Frais">Autres Frais</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Montant (FCFA)</label>
+            <input type="number" class="form-control" id="exp-amount" required>
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label">Description / Motif</label>
+            <input type="text" class="form-control" id="exp-desc" placeholder="Ex: Facture SONABEL Mois d'Août" required>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('modal-expense')">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer Dépense</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 6. Modal Nouveau Projet IT -->
+  <div class="modal-backdrop" id="modal-project">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Créer un Projet de Prestation / Audit IT</h3>
+        <button class="btn-icon" onclick="app.closeModal('modal-project')"><i data-lucide="x"></i></button>
+      </div>
+      <form onsubmit="app.saveProject(event)">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label class="form-label">Intitulé du Projet</label>
+            <input type="text" class="form-control" id="prj-title" placeholder="Ex: Audit et Installation Câblage Structuré" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nom du Client</label>
+            <input type="text" class="form-control" id="prj-client" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Domaine d'Intervention</label>
+            <select class="form-control" id="prj-category">
+              <option value="Audit & Conseil">Audit & Conseil</option>
+              <option value="Installation Réseau">Installation Réseau</option>
+              <option value="Contrat de Maintenance">Contrat de Maintenance</option>
+              <option value="Sécurité & Vidéosurveillance">Sécurité & Vidéosurveillance</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Budget TTC (FCFA)</label>
+            <input type="number" class="form-control" id="prj-budget" required>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('modal-project')">Annuler</button>
+          <button type="submit" class="btn btn-primary">Créer le Projet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 7. Modal Client CRM -->
+  <div class="modal-backdrop" id="modal-client">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Fiche Client CRM</h3>
+        <button class="btn-icon" onclick="app.closeModal('modal-client')"><i data-lucide="x"></i></button>
+      </div>
+      <form onsubmit="app.saveClient(event)">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label class="form-label">Nom ou Raison Sociale</label>
+            <input type="text" class="form-control" id="cli-name" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Type Client</label>
+            <select class="form-control" id="cli-type">
+              <option value="Particulier">Particulier</option>
+              <option value="Entreprise">Entreprise</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Téléphone WhatsApp</label>
+            <input type="text" class="form-control" id="cli-phone" placeholder="+226 70 00 00 00" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">IFU (Si Entreprise)</label>
+            <input type="text" class="form-control" id="cli-ifu" placeholder="00320159Z">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Adresse / Secteur</label>
+            <input type="text" class="form-control" id="cli-address" placeholder="Ouagadougou">
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('modal-client')">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer Client</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 8. Modal Aperçu & Éditeur - Attestation de Fin de Stage -->
+  <div class="modal-backdrop" id="modal-cert-editor">
+    <div class="modal-content" style="max-width: 1050px; padding: 24px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="file-check"></i> Aperçu & Éditeur - Attestation de Fin de Stage
+        </h3>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <button type="button" class="btn btn-warning btn-sm" id="btn-toggle-cert-edit" onclick="app.toggleCertEdit()">
+            <i data-lucide="edit-3"></i> Modifier le Texte
+          </button>
+          <button class="btn-icon" onclick="app.closeModal('modal-cert-editor')"><i data-lucide="x"></i></button>
+        </div>
+      </div>
+
+      <!-- Printable & Editable Certificate Canvas -->
+      <div id="cert-editor-container" style="max-height: 70vh; overflow-y: auto; padding: 10px;">
+        <div class="cert-frame-box" id="cert-preview-content">
+          <!-- Top Header Grid -->
+          <div class="cert-top-grid">
+            <div class="cert-left-meta">
+              <strong>LIVING STONE SERVICE (LSS)</strong><br>
+              Entreprise Individuelle<br>
+              N° IFU : <span id="ce-ifu">00320159Z</span><br>
+              N° RCCM : <span id="ce-rccm">BF-OUA-01-2026-A10-13450</span>
+            </div>
+            <div class="cert-center-logo">
+              <img src="logo.png" alt="LSS Logo">
+            </div>
+            <div class="cert-right-meta">
+              <strong>MAINTENANCE & FORMATIONS</strong><br>
+              Ouagadougou, Burkina Faso<br>
+              <span id="ce-phone">Tél : (+226) 70 00 00 00</span><br>
+              <a id="ce-email" href="mailto:contactlivingstoneservice@gmail.com" style="color: #0252df; text-decoration: none;">contactlivingstoneservice@gmail.com</a>
+            </div>
+          </div>
+
+          <!-- Main Document Title -->
+          <h2 class="cert-main-title">ATTESTATION DE FIN DE STAGE PRATIQUE</h2>
+          <div class="cert-number-badge" id="ce-cert-number">N° STG-2026-003/LSS</div>
+
+          <!-- Intro sentence -->
+          <div class="cert-intro-text">
+            Le Promoteur de l'Entreprise Individuelle <strong>LIVING STONE SERVICE (LSS)</strong> atteste que :
+          </div>
+
+          <!-- Student Name Box -->
+          <div style="text-align: center;">
+            <div class="cert-student-name" id="ce-student-name" contenteditable="false">ZABRE SOULEYMANE</div>
+          </div>
+
+          <!-- Course transition -->
+          <div class="cert-dates-text" style="margin-bottom: 8px;">
+            a suivi avec assiduité et succès un stage pratique de formation professionnelle en :
+          </div>
+
+          <!-- Track Badge Pill -->
+          <div class="cert-track-box">
+            <div class="cert-track-pill" id="ce-track-name" contenteditable="false">INITIATION EN MAINTENANCE INFORMATIQUE</div>
+          </div>
+
+          <!-- Training Dates -->
+          <div class="cert-dates-text">
+            effectué dans nos ateliers à Ouagadougou du <strong id="ce-start-date" contenteditable="false">2026-08-12</strong> au <strong id="ce-end-date" contenteditable="false">2026-09-12</strong>.
+          </div>
+
+          <!-- Validated Practical Skills Box -->
+          <div class="cert-skills-panel">
+            <div class="cert-skills-header">Compétences Pratiques Validées :</div>
+            <ul class="cert-skills-list" id="ce-skills-list" contenteditable="false">
+              <li>Diagnostic matériel (surpression/surtension) et dépannage des pannes complexes de PC/Laptops.</li>
+              <li>Démontage, assemblage, nettoyage des composants et maintenance préventive.</li>
+              <li>Installation, formatage et configuration des systèmes Windows, antivirus et logiciels.</li>
+              <li>Notions d'entretien des imprimantes et câblage des réseaux informatiques locaux.</li>
+            </ul>
+          </div>
+
+          <!-- Legal statement -->
+          <div class="cert-legal-text">
+            En foi de quoi, la présente attestation lui est délivrée pour servir et valoir ce que de droit.
+          </div>
+
+          <!-- Footer Signature Grid -->
+          <div class="cert-footer-grid">
+            <div class="cert-footer-left">
+              Fait à Ouagadougou, le <strong id="ce-issue-date" contenteditable="false">13 août 2026</strong>
+            </div>
+            <div class="cert-footer-right">
+              <div class="title">LE PROMOTEUR</div>
+              <div class="name" id="ce-promoter-name">ZABRE S. Constantin</div>
+              <div class="sub">(Cachet & Signature Officiels)</div>
+            </div>
+          </div>
+
+          <!-- Motto Footer -->
+          <div style="margin-top: 24px; padding-top: 8px; border-top: 1px dashed #cbd5e1; text-align: center; font-size: 8.5pt; color: #64748b; font-style: italic;">
+            « <span id="ce-motto">L'Excellence & la Qualité au Service de l'Innovation IT</span> »
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Footer -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--glass-border);">
+        <button type="button" class="btn btn-secondary" onclick="app.closeModal('modal-cert-editor')">
+          <i data-lucide="x"></i> Fermer
+        </button>
+        <div style="display: flex; gap: 10px;">
+          <a href="#" id="cert-wa-link" target="_blank" class="btn btn-success">
+            <i data-lucide="message-square"></i> Envoyer sur WhatsApp
+          </a>
+          <button type="button" class="btn btn-primary" onclick="app.printCurrentCertificate()">
+            <i data-lucide="printer"></i> Imprimer l'Attestation
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ZONE D'IMPRESSION A4 VIRTUELLE -->
+  <div id="print-area">
+    <!-- Dynamic A4 content injected via JavaScript -->
+  </div>
+
+  <!-- Application Logic Script -->
+  <script src="app.js"></script>
+
+</body>
+</html>

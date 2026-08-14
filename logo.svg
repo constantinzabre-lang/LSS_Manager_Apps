@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <style>
+      .blue-fill { fill: #0252df; }
+      .orange-fill { fill: #f37021; }
+      .orange-stroke { stroke: #f37021; stroke-width: 10; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+      .green-fill { fill: #109e2b; }
+      .green-stroke { stroke: #109e2b; stroke-width: 12; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+      .white-fill { fill: #ffffff; }
+      .brand-title { font-family: 'Plus Jakarta Sans', Arial, sans-serif; font-weight: 900; font-size: 32px; fill: #0252df; letter-spacing: 1px; }
+      .brand-subtitle { font-family: 'Plus Jakarta Sans', Arial, sans-serif; font-weight: 700; font-size: 18px; fill: #f37021; letter-spacing: 2px; }
+    </style>
+  </defs>
+
+  <!-- Green Top Growth Chart Bars -->
+  <path class="green-fill" d="M 230 40 L 255 40 L 255 135 L 230 155 Z" />
+  <path class="green-fill" d="M 265 60 L 290 60 L 290 120 L 265 140 Z" />
+
+  <!-- Orange Screen Outline -->
+  <polygon points="135,75 385,75 360,235 130,235" class="orange-stroke" />
+
+  <!-- Green Screen Frame Left -->
+  <path class="green-stroke" d="M 140,75 L 250,75" />
+
+  <!-- Blue Chart Bars Inside Screen -->
+  <rect x="270" y="180" width="10" height="30" class="blue-fill" />
+  <rect x="285" y="165" width="10" height="45" class="blue-fill" />
+  <rect x="300" y="150" width="10" height="60" class="blue-fill" />
+
+  <!-- Orange Swoosh Right -->
+  <path d="M 355,130 C 460,130 460,270 355,270" class="orange-stroke" stroke-width="18" />
+
+  <!-- Green Dynamic Arc Swoosh -->
+  <path d="M 50,305 C 100,180 250,130 350,130 C 210,140 100,240 160,355 Z" class="green-fill" />
+
+  <!-- Laptop Base & Keyboard (Royal Blue) -->
+  <polygon points="115,240 385,240 430,370 185,370" class="blue-fill" />
+  
+  <!-- Keyboard Lines (White) -->
+  <rect x="180" y="255" width="220" height="10" rx="3" class="white-fill" />
+  <rect x="175" y="275" width="230" height="10" rx="3" class="white-fill" />
+  <rect x="170" y="295" width="240" height="10" rx="3" class="white-fill" />
+
+  <!-- Trackpad (White) -->
+  <rect x="230" y="315" width="105" height="38" rx="4" class="white-fill" />
+
+  <!-- Typography Text -->
+  <text x="250" y="420" text-anchor="middle" class="brand-title">LIVING STONE SERVICE</text>
+  <text x="250" y="455" text-anchor="middle" class="brand-subtitle">MAINTENANCE INFORMATIQUE</text>
+</svg>
