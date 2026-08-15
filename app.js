@@ -427,64 +427,71 @@ class LSSApp {
     let totalSalesHT = 0;
     let totalVAT = 0;
 
-    // Sum from POS invoices
-    this.db.invoices.forEach(inv => {
-      if (inv.paymentStatus === 'Payé') {
-        totalSalesTTC += Number(inv.totalTTC || 0);
-        totalSalesHT += Number(inv.subtotalHT || 0);
-        totalVAT += Number(inv.vatAmount || 0);
-      }
-    });
+    if (this.db && Array.isArray(this.db.invoices)) {
+      this.db.invoices.forEach(inv => {
+        if (inv.paymentStatus === 'Payé') {
+          totalSalesTTC += Number(inv.totalTTC || 0);
+          totalSalesHT += Number(inv.subtotalHT || 0);
+          totalVAT += Number(inv.vatAmount || 0);
+        }
+      });
+    }
 
-    // Sum from delivered/paid maintenance tickets
-    this.db.tickets.forEach(tkt => {
-      totalSalesTTC += Number(tkt.costTTC || 0);
-      totalSalesHT += Number(tkt.costHT || 0);
-      totalVAT += Number(tkt.vat18 || 0);
-    });
+    if (this.db && Array.isArray(this.db.tickets)) {
+      this.db.tickets.forEach(tkt => {
+        totalSalesTTC += Number(tkt.costTTC || 0);
+        totalSalesHT += Number(tkt.costHT || 0);
+        totalVAT += Number(tkt.vat18 || 0);
+      });
+    }
 
-    // Sum expenses
-    let totalExpenses = this.db.expenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
+    let totalExpenses = (this.db && Array.isArray(this.db.expenses)) ? this.db.expenses.reduce((acc, e) => acc + Number(e.amount || 0), 0) : 0;
     let netProfit = totalSalesHT - totalExpenses;
 
-    document.getElementById('kpi-ca-ttc').innerText = this.formatFCFA(totalSalesTTC);
-    document.getElementById('kpi-ca-ht').innerText = this.formatFCFA(totalSalesHT);
-    document.getElementById('kpi-tva').innerText = this.formatFCFA(totalVAT);
-    document.getElementById('kpi-net-profit').innerText = this.formatFCFA(netProfit);
+    this.setText('kpi-ca-ttc', this.formatFCFA(totalSalesTTC));
+    this.setText('kpi-ca-ht', this.formatFCFA(totalSalesHT));
+    this.setText('kpi-tva', this.formatFCFA(totalVAT));
+    this.setText('kpi-net-profit', this.formatFCFA(netProfit));
 
     // Tickets Tbody
     const tbody = document.getElementById('dashboard-tickets-tbody');
-    tbody.innerHTML = '';
-    this.db.tickets.slice(0, 5).forEach(t => {
-      tbody.innerHTML += `
-        <tr>
-          <td><strong>${t.id}</strong></td>
-          <td>${t.clientName}</td>
-          <td>${t.deviceModel}</td>
-          <td><span class="badge ${this.getBadgeClass(t.status)}">${t.status}</span></td>
-          <td><strong>${this.formatFCFA(t.costTTC)}</strong></td>
-          <td>
-            <button class="btn btn-secondary btn-sm" onclick="app.printTicketReceipt('${t.id}')">Reçu A4</button>
-          </td>
-        </tr>
-      `;
-    });
+    if (tbody) {
+      tbody.innerHTML = '';
+      if (this.db && Array.isArray(this.db.tickets)) {
+        this.db.tickets.slice(0, 5).forEach(t => {
+          tbody.innerHTML += `
+            <tr>
+              <td><strong>${t.id}</strong></td>
+              <td>${t.clientName}</td>
+              <td>${t.deviceModel}</td>
+              <td><span class="badge ${this.getBadgeClass(t.status)}">${t.status}</span></td>
+              <td><strong>${this.formatFCFA(t.costTTC)}</strong></td>
+              <td>
+                <button class="btn btn-secondary btn-sm" onclick="app.printTicketReceipt('${t.id}')">Reçu A4</button>
+              </td>
+            </tr>
+          `;
+        });
+      }
+    }
 
     // Stock Alerts
     const alertsBox = document.getElementById('dashboard-stock-alerts');
-    alertsBox.innerHTML = '';
-    const lowStock = this.db.inventory.filter(i => i.stockQty <= i.minAlert);
-    if (lowStock.length === 0) {
-      alertsBox.innerHTML = '<p style="color: var(--accent-success); font-size: 13px;">Stock optimal. Aucune alerte.</p>';
-    } else {
-      lowStock.forEach(item => {
-        alertsBox.innerHTML += `
-          <div style="display: flex; justify-content: space-between; padding: 8px; background: rgba(239,68,68,0.1); border-radius: 6px; margin-bottom: 8px; font-size: 13px;">
-            <span>${item.name}</span>
-            <strong style="color: var(--accent-danger);">${item.stockQty} en stock</strong>
-          </div>
-        `;
-      });
+    if (alertsBox) {
+      alertsBox.innerHTML = '';
+      const lowStock = (this.db && Array.isArray(this.db.inventory)) ? this.db.inventory.filter(i => i.stockQty <= i.minAlert) : [];
+      if (lowStock.length === 0) {
+        alertsBox.innerHTML = '<p style="color: var(--accent-success); font-size: 13px;">Stock optimal. Aucune alerte.</p>';
+      } else {
+        lowStock.forEach(item => {
+          alertsBox.innerHTML += `
+            <div style="display: flex; justify-content: space-between; padding: 8px; background: rgba(239,68,68,0.1); border-radius: 6px; margin-bottom: 8px; font-size: 13px;">
+              <span>${item.name}</span>
+              <strong style="color: var(--accent-danger);">${item.stockQty} en stock</strong>
+            </div>
+          `;
+        });
+      }
     }
   }
 
@@ -2060,6 +2067,21 @@ class LSSApp {
   }
 
   // Helpers
+  setText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.innerText = (text !== undefined && text !== null) ? text : '';
+  }
+
+  setHTML(id, html) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = (html !== undefined && html !== null) ? html : '';
+  }
+
+  setVal(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.value = (val !== undefined && val !== null) ? val : '';
+  }
+
   formatFCFA(amount) {
     return new Intl.NumberFormat('fr-FR').format(Math.round(amount || 0)) + ' FCFA';
   }

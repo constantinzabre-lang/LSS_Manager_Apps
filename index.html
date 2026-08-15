@@ -598,12 +598,19 @@
                   <input type="date" class="form-control" id="set-rccm-date" required>
                 </div>
                 <div class="form-group">
+                  <label class="form-label">🔒 Sécurité au Lancement (Code PIN)</label>
+                  <select class="form-control" id="set-lock-launch">
+                    <option value="false">Accès Direct sans PIN au Lancement (Verrouillage Manuel)</option>
+                    <option value="true">Exiger le Code PIN au Lancement de l'Application</option>
+                  </select>
+                </div>
+                <div class="form-group">
                   <label class="form-label">Code PIN Administrateur (Accès Total - Défaut: 1234)</label>
-                  <input type="password" class="form-control" id="set-admin-pin" maxlength="6" required>
+                  <input type="text" class="form-control" id="set-admin-pin" maxlength="12" required>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Code PIN Secrétaire (Accès Opérationnel - Défaut: 5678)</label>
-                  <input type="password" class="form-control" id="set-staff-pin" maxlength="6" required>
+                  <input type="text" class="form-control" id="set-staff-pin" maxlength="12" required>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Taux TVA (%)</label>
