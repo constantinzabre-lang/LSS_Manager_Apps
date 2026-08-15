@@ -120,6 +120,8 @@ class LSSApp {
     this.currentView = 'dashboard';
     this.enteredPin = '';
     this.posCart = [];
+    this.isAdminAuthenticated = true;
+    this.userRole = 'admin';
     this.init();
   }
 
@@ -157,9 +159,6 @@ class LSSApp {
     // Apply Theme
     document.documentElement.setAttribute('data-theme', this.db.settings.theme || 'dark');
     
-    // Lock screen active by default on launch
-    this.lockApp();
-
     // Register Service Worker for PWA
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').then(() => console.log('[PWA] Service Worker active')).catch(err => console.warn('[PWA] SW Error', err));
