@@ -156,6 +156,13 @@ class LSSApp {
   }
 
   init() {
+    // Force session Admin active et masquage du verrouillage au lancement
+    this.isAdminAuthenticated = true;
+    this.userRole = 'admin';
+    const lockScreen = document.getElementById('lock-screen');
+    if (lockScreen) lockScreen.classList.remove('active');
+    this.updateSidebarUserBadge('ZABRE S. Constantin', 'Promoteur / Admin', 'ZC');
+
     // Apply Theme
     document.documentElement.setAttribute('data-theme', this.db.settings.theme || 'dark');
     
