@@ -1,29 +1,21 @@
-// Service Worker for LIVING STONE SERVICE (LSS) - Version 4.1
-const CACHE_NAME = 'lss-manager-cache-v4.1';
+// Service Worker for LIVING STONE SERVICE (LSS) - Version 5.0 (Network First Strategy)
+const CACHE_NAME = 'lss-manager-cache-v5.0';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './style.css',
   './app.js',
   './manifest.json',
-  './logo.png',
-  'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap',
-  'https://cdn.jsdelivr.net/npm/lucide@0.294.0/dist/umd/lucide.min.js'
+  './logo.png'
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Caching core assets');
-      return cache.addAll(ASSETS_TO_CACHE).catch((err) => {
-        console.warn('[Service Worker] Cache addAll warning:', err);
-      });
-    })
-  );
+  console.log('[Service Worker v5.0] Installing new version');
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
+  console.log('[Service Worker v5.0] Activating & Purging old caches');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -34,9 +26,8 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
@@ -45,35 +36,24 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Network-First Strategy to guarantee immediate updates on Vercel
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Fetch background update for cache
-        fetch(event.request)
-          .then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
-            }
-          })
-          .catch(() => {/* Offline mode, ignored */});
-        return cachedResponse;
-      }
-
-      return fetch(event.request)
-        .then((networkResponse) => {
-          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-            return networkResponse;
-          }
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
-          return networkResponse;
-        })
-        .catch(() => {
-          // If offline and request is for navigation page, return index.html fallback
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        // Offline fallback from cache
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) return cachedResponse;
           if (event.request.mode === 'navigate') {
             return caches.match('./index.html');
           }
         });
-    })
+      })
   );
 });

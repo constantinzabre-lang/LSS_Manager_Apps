@@ -159,9 +159,15 @@ class LSSApp {
     // Apply Theme
     document.documentElement.setAttribute('data-theme', this.db.settings.theme || 'dark');
     
-    // Register Service Worker for PWA
+    // Register Service Worker for PWA (Version 5.0 Network First)
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').then(() => console.log('[PWA] Service Worker active')).catch(err => console.warn('[PWA] SW Error', err));
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(reg => reg.update());
+      });
+      navigator.serviceWorker.register('./sw.js').then(reg => {
+        reg.update();
+        console.log('[PWA] Service Worker v5.0 Active');
+      }).catch(err => console.warn('[PWA] SW Error', err));
     }
 
     // Initialize Lucide Icons
