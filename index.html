@@ -22,34 +22,68 @@
 </head>
 <body>
 
-  <!-- Security PIN Lock Screen -->
-  <div id="lock-screen">
-    <img src="logo.png" alt="Living Stone Service Logo" style="width: 100px; height: 100px; object-fit: contain; margin-bottom: 10px;">
-    <div style="text-align: center;">
-      <h2 style="font-size: 22px; font-weight: 800; margin-bottom: 6px;">LIVING STONE SERVICE</h2>
-      <p style="color: var(--text-muted); font-size: 13px;">Veuillez saisir votre code PIN de sécurité</p>
+  <!-- Security Welcome & Authentication Screen -->
+  <div id="lock-screen" class="active">
+    <div class="login-card">
+      <div class="login-header">
+        <img src="logo.png" alt="Living Stone Service Logo" class="login-logo">
+        <h2 class="login-title">LIVING STONE SERVICE</h2>
+        <p class="login-subtitle">Système de Gestion Atelier, Ventes & Académie</p>
+      </div>
+
+      <!-- Role Selection Tabs -->
+      <div class="role-selector">
+        <button type="button" class="role-tab active" id="role-admin-tab" onclick="app.selectRoleTab('admin')">
+          <i data-lucide="shield-check"></i>
+          <span>Administrateur</span>
+        </button>
+        <button type="button" class="role-tab" id="role-staff-tab" onclick="app.selectRoleTab('staff')">
+          <i data-lucide="user-check"></i>
+          <span>Secrétariat / Caisse</span>
+        </button>
+      </div>
+
+      <!-- Login Form & Password / PIN Input -->
+      <form onsubmit="app.verifyPin(); return false;" class="login-form">
+        <div class="password-field-group">
+          <label id="login-role-label">Code PIN / Mot de Passe (Administrateur)</label>
+          <div class="password-input-wrapper">
+            <input type="password" id="pin-input-field" placeholder="Saisir le code PIN ou mot de passe..." autocomplete="current-password" autofocus oninput="app.onPasswordInput(this.value)">
+            <button type="button" class="btn-toggle-pwd" onclick="app.togglePasswordVisibility()" title="Afficher/Masquer le mot de passe">
+              <i data-lucide="eye" id="pwd-eye-icon"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="pin-dots" id="pin-dots-container">
+          <div class="pin-dot"></div>
+          <div class="pin-dot"></div>
+          <div class="pin-dot"></div>
+          <div class="pin-dot"></div>
+        </div>
+
+        <!-- On-Screen Numeric Keypad for Mobile/Touch -->
+        <div class="pin-pad">
+          <button type="button" class="pin-btn" onclick="app.enterPin('1')">1</button>
+          <button type="button" class="pin-btn" onclick="app.enterPin('2')">2</button>
+          <button type="button" class="pin-btn" onclick="app.enterPin('3')">3</button>
+          <button type="button" class="pin-btn" onclick="app.enterPin('4')">4</button>
+          <button type="button" class="pin-btn" onclick="app.enterPin('5')">5</button>
+          <button type="button" class="pin-btn" onclick="app.enterPin('6')">6</button>
+          <button type="button" class="pin-btn" onclick="app.enterPin('7')">7</button>
+          <button type="button" class="pin-btn" onclick="app.enterPin('8')">8</button>
+          <button type="button" class="pin-btn" onclick="app.enterPin('9')">9</button>
+          <button type="button" class="pin-btn pin-btn-clear" onclick="app.clearPin()">C</button>
+          <button type="button" class="pin-btn" onclick="app.enterPin('0')">0</button>
+          <button type="button" class="pin-btn pin-btn-submit" onclick="app.verifyPin()">OK</button>
+        </div>
+
+        <p id="pin-error-msg" class="login-error-msg"></p>
+        <div class="login-hint">
+          💡 PINs par défaut : Admin : <strong>1234</strong> | Secrétariat : <strong>5678</strong>
+        </div>
+      </form>
     </div>
-    <div class="pin-dots" id="pin-dots-container">
-      <div class="pin-dot"></div>
-      <div class="pin-dot"></div>
-      <div class="pin-dot"></div>
-      <div class="pin-dot"></div>
-    </div>
-    <div class="pin-pad">
-      <button class="pin-btn" onclick="app.enterPin('1')">1</button>
-      <button class="pin-btn" onclick="app.enterPin('2')">2</button>
-      <button class="pin-btn" onclick="app.enterPin('3')">3</button>
-      <button class="pin-btn" onclick="app.enterPin('4')">4</button>
-      <button class="pin-btn" onclick="app.enterPin('5')">5</button>
-      <button class="pin-btn" onclick="app.enterPin('6')">6</button>
-      <button class="pin-btn" onclick="app.enterPin('7')">7</button>
-      <button class="pin-btn" onclick="app.enterPin('8')">8</button>
-      <button class="pin-btn" onclick="app.enterPin('9')">9</button>
-      <button class="pin-btn" onclick="app.clearPin()" style="font-size: 14px;">C</button>
-      <button class="pin-btn" onclick="app.enterPin('0')">0</button>
-      <button class="pin-btn" onclick="app.verifyPin()" style="font-size: 14px; background: var(--accent-primary);">OK</button>
-    </div>
-    <p id="pin-error-msg" style="color: var(--accent-danger); font-size: 13px; font-weight: 700; height: 20px;"></p>
   </div>
 
   <!-- Main Application Wrapper -->

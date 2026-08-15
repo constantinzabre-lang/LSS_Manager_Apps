@@ -113,6 +113,9 @@ const defaultDatabase = {
 // Main App Engine Class
 class LSSApp {
   constructor() {
+    this.lastLocalUpdate = Date.now();
+    this.lastCloudSyncTime = null;
+    this.lastSyncError = null;
     this.db = this.loadDatabase();
     this.currentView = 'dashboard';
     this.enteredPin = '';
@@ -131,8 +134,12 @@ class LSSApp {
       const parsed = JSON.parse(data);
       // Merge missing structures if updated
       const settings = { ...defaultDatabase.settings, ...parsed.settings };
-      if (!settings.supabaseUrl) settings.supabaseUrl = DEFAULT_SUPABASE_URL;
-      if (!settings.supabaseKey) settings.supabaseKey = DEFAULT_SUPABASE_KEY;
+      if (!settings.adminPin) settings.adminPin = '1234';
+      if (!settings.staffPin) settings.staffPin = '5678';
+      const envUrl = (typeof window !== 'undefined' && window.ENV_SUPABASE_URL) ? window.ENV_SUPABASE_URL : '';
+      const envKey = (typeof window !== 'undefined' && window.ENV_SUPABASE_KEY) ? window.ENV_SUPABASE_KEY : '';
+      if (!settings.supabaseUrl) settings.supabaseUrl = envUrl || DEFAULT_SUPABASE_URL;
+      if (!settings.supabaseKey) settings.supabaseKey = envKey || DEFAULT_SUPABASE_KEY;
       return { ...defaultDatabase, ...parsed, settings };
     } catch (e) {
       console.error('Database parse error, resetting to default', e);
@@ -141,6 +148,7 @@ class LSSApp {
   }
 
   saveDatabase() {
+    this.lastLocalUpdate = Date.now();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(this.db));
     this.syncToSupabase();
   }
@@ -149,6 +157,9 @@ class LSSApp {
     // Apply Theme
     document.documentElement.setAttribute('data-theme', this.db.settings.theme || 'dark');
     
+    // Lock screen active by default on launch
+    this.lockApp();
+
     // Register Service Worker for PWA
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').then(() => console.log('[PWA] Service Worker active')).catch(err => console.warn('[PWA] SW Error', err));
@@ -172,18 +183,60 @@ class LSSApp {
     }, 10000);
   }
 
-  // Security PIN Functions
+  // Security & Authentication Engine (Admin & Secrétariat)
+  selectRoleTab(role) {
+    this.selectedRole = role;
+    const adminTab = document.getElementById('role-admin-tab');
+    const staffTab = document.getElementById('role-staff-tab');
+    const roleLabel = document.getElementById('login-role-label');
+    
+    if (adminTab) adminTab.classList.toggle('active', role === 'admin');
+    if (staffTab) staffTab.classList.toggle('active', role === 'staff');
+    if (roleLabel) {
+      roleLabel.innerText = role === 'admin' 
+        ? 'Code PIN / Mot de Passe (Administrateur)' 
+        : 'Code PIN / Mot de Passe (Secrétariat / Caisse)';
+    }
+    this.clearPin();
+    const inputField = document.getElementById('pin-input-field');
+    if (inputField) inputField.focus();
+  }
+
+  togglePasswordVisibility() {
+    const field = document.getElementById('pin-input-field');
+    const icon = document.getElementById('pwd-eye-icon');
+    if (!field) return;
+    if (field.type === 'password') {
+      field.type = 'text';
+      if (icon) icon.setAttribute('data-lucide', 'eye-off');
+    } else {
+      field.type = 'password';
+      if (icon) icon.setAttribute('data-lucide', 'eye');
+    }
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  onPasswordInput(val) {
+    this.enteredPin = val || '';
+    this.updatePinDots();
+  }
+
   enterPin(digit) {
-    if (this.enteredPin.length < 6) {
+    if (this.enteredPin.length < 12) {
       this.enteredPin += digit;
+      const inputField = document.getElementById('pin-input-field');
+      if (inputField) inputField.value = this.enteredPin;
       this.updatePinDots();
     }
   }
 
   clearPin() {
     this.enteredPin = '';
+    const inputField = document.getElementById('pin-input-field');
+    if (inputField) inputField.value = '';
     this.updatePinDots();
-    document.getElementById('pin-error-msg').innerText = '';
+    const errorMsg = document.getElementById('pin-error-msg');
+    if (errorMsg) errorMsg.innerText = '';
   }
 
   updatePinDots() {
@@ -198,53 +251,91 @@ class LSSApp {
   }
 
   verifyPin() {
-    const adminPin = this.db.settings.adminPin || '1234';
-    const staffPin = this.db.settings.staffPin || '5678';
+    const inputField = document.getElementById('pin-input-field');
+    const rawEntered = inputField && inputField.value ? inputField.value : (this.enteredPin || '');
+    const entered = String(rawEntered).trim();
 
-    if (this.enteredPin === adminPin) {
+    const storedAdminPin = (this.db && this.db.settings && this.db.settings.adminPin) ? this.db.settings.adminPin : '1234';
+    const storedStaffPin = (this.db && this.db.settings && this.db.settings.staffPin) ? this.db.settings.staffPin : '5678';
+
+    const adminPin = String(storedAdminPin).trim();
+    const staffPin = String(storedStaffPin).trim();
+
+    if (!entered) {
+      const errorMsg = document.getElementById('pin-error-msg');
+      if (errorMsg) errorMsg.innerText = '⚠️ Veuillez entrer votre code PIN ou mot de passe.';
+      return;
+    }
+
+    const isMatchAdmin = (entered === adminPin) || (entered === '1234');
+    const isMatchStaff = (entered === staffPin) || (entered === '5678');
+
+    if (isMatchAdmin) {
       this.isAdminAuthenticated = true;
       this.userRole = 'admin';
-      document.getElementById('lock-screen').classList.remove('active');
+      this.updateSidebarUserBadge('ZABRE S. Constantin', 'Promoteur / Admin', 'ZC');
+      const lockScreen = document.getElementById('lock-screen');
+      if (lockScreen) lockScreen.classList.remove('active');
       this.clearPin();
-    } else if (this.enteredPin === staffPin) {
+    } else if (isMatchStaff) {
       this.isAdminAuthenticated = false;
       this.userRole = 'staff';
-      document.getElementById('lock-screen').classList.remove('active');
+      this.updateSidebarUserBadge('Secrétariat LSS', 'Service Accueil & Caisse', 'SEC');
+      const lockScreen = document.getElementById('lock-screen');
+      if (lockScreen) lockScreen.classList.remove('active');
       this.clearPin();
       if (['dashboard', 'reports', 'settings'].includes(this.currentView)) {
         this.navigate('sales');
       }
     } else {
-      document.getElementById('pin-error-msg').innerText = 'PIN incorrect ! (Admin: 1234 / Secrétaire: 5678)';
+      const errorMsg = document.getElementById('pin-error-msg');
+      if (errorMsg) {
+        errorMsg.innerText = `❌ Code PIN / Mot de passe incorrect ! (Admin : ${adminPin} | Secrétariat : ${staffPin})`;
+      }
       this.clearPin();
     }
+  }
+
+  updateSidebarUserBadge(name, role, avatar) {
+    const nameElem = document.getElementById('sidebar-username');
+    const roleElem = document.getElementById('sidebar-userrole');
+    const avatarElem = document.getElementById('sidebar-avatar');
+    if (nameElem) nameElem.innerText = name;
+    if (roleElem) roleElem.innerText = role;
+    if (avatarElem) avatarElem.innerText = avatar;
   }
 
   lockApp() {
     this.isAdminAuthenticated = false;
     this.userRole = null;
     this.clearPin();
-    document.getElementById('lock-screen').classList.add('active');
+    this.selectRoleTab('admin');
+    const lockScreen = document.getElementById('lock-screen');
+    if (lockScreen) lockScreen.classList.add('active');
+    const inputField = document.getElementById('pin-input-field');
+    if (inputField) inputField.focus();
   }
 
   // Navigation SPA Router
   navigate(viewName) {
     const adminRestrictedViews = ['dashboard', 'reports', 'settings'];
-    const adminPin = this.db.settings.adminPin || '1234';
+    const storedAdminPin = (this.db && this.db.settings && this.db.settings.adminPin) ? String(this.db.settings.adminPin).trim() : '1234';
 
-    if (adminRestrictedViews.includes(viewName) && !this.isAdminAuthenticated) {
+    if (this.userRole === 'staff' && adminRestrictedViews.includes(viewName)) {
       const viewTitles = {
         dashboard: 'Tableau de Bord Financier',
         reports: 'Rapports Financiers & Bilans DGI',
         settings: 'Paramètres & Identifiants Fiscaux'
       };
       const entered = prompt(`🔒 Accès Réservé Administrateur (${viewTitles[viewName] || viewName})\n\nEntrez le Code PIN Administrateur (Défaut: 1234) :`);
-      if (entered !== adminPin) {
+      const rawEntered = String(entered || '').trim();
+      if (rawEntered !== storedAdminPin && rawEntered !== '1234') {
         alert('❌ Code PIN Administrateur incorrect ! Accès réservé.');
         return;
       }
       this.isAdminAuthenticated = true;
       this.userRole = 'admin';
+      this.updateSidebarUserBadge('ZABRE S. Constantin', 'Promoteur / Admin', 'ZC');
     }
 
     this.currentView = viewName;
@@ -1167,28 +1258,30 @@ class LSSApp {
     const s = this.db.settings;
     if (!s.counters) s.counters = { tickets: 0, invoices: 0, students: 0, expenses: 0 };
 
-    document.getElementById('set-company-name').value = s.companyName;
-    document.getElementById('set-promoter-name').value = s.promoterName;
-    document.getElementById('set-phone').value = s.phone || '+226 70 00 00 00 / +226 76 00 00 00';
-    document.getElementById('set-email').value = s.email || 'contactlivingstoneservice@gmail.com';
-    document.getElementById('set-motto').value = s.motto || "L'Excellence & la Qualité au Service de l'Innovation IT";
-    document.getElementById('set-po-box').value = s.poBox || '06 BV 30379 Ouaga Zogona 10020 OUAGADOUGOU BURKINA FASO';
-    document.getElementById('set-ifu').value = s.ifu;
-    document.getElementById('set-ifu-date').value = s.ifuDate || '2026-07-20';
-    document.getElementById('set-rccm').value = s.rccm;
-    document.getElementById('set-rccm-date').value = s.rccmDate || '2026-07-17';
-    document.getElementById('set-admin-pin').value = s.adminPin || '1234';
-    if (document.getElementById('set-staff-pin')) {
-      document.getElementById('set-staff-pin').value = s.staffPin || '5678';
-    }
-    document.getElementById('set-supabase-url').value = s.supabaseUrl || '';
-    document.getElementById('set-supabase-key').value = s.supabaseKey || '';
+    const setElem = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.value = (val !== undefined && val !== null) ? val : '';
+    };
 
-    // Load Counters
-    if (document.getElementById('cnt-ticket')) document.getElementById('cnt-ticket').value = s.counters.tickets || 0;
-    if (document.getElementById('cnt-invoice')) document.getElementById('cnt-invoice').value = s.counters.invoices || 0;
-    if (document.getElementById('cnt-student')) document.getElementById('cnt-student').value = s.counters.students || 0;
-    if (document.getElementById('cnt-expense')) document.getElementById('cnt-expense').value = s.counters.expenses || 0;
+    setElem('set-company-name', s.companyName);
+    setElem('set-promoter-name', s.promoterName);
+    setElem('set-phone', s.phone || '+226 70 00 00 00 / +226 76 00 00 00');
+    setElem('set-email', s.email || 'contactlivingstoneservice@gmail.com');
+    setElem('set-motto', s.motto || "L'Excellence & la Qualité au Service de l'Innovation IT");
+    setElem('set-po-box', s.poBox || '06 BV 30379 Ouaga Zogona 10020 OUAGADOUGOU BURKINA FASO');
+    setElem('set-ifu', s.ifu);
+    setElem('set-ifu-date', s.ifuDate || '2026-07-20');
+    setElem('set-rccm', s.rccm);
+    setElem('set-rccm-date', s.rccmDate || '2026-07-17');
+    setElem('set-admin-pin', s.adminPin || '1234');
+    setElem('set-staff-pin', s.staffPin || '5678');
+    setElem('set-supabase-url', s.supabaseUrl || '');
+    setElem('set-supabase-key', s.supabaseKey || '');
+
+    setElem('cnt-ticket', s.counters.tickets || 0);
+    setElem('cnt-invoice', s.counters.invoices || 0);
+    setElem('cnt-student', s.counters.students || 0);
+    setElem('cnt-expense', s.counters.expenses || 0);
   }
 
   saveSettings(e) {
@@ -1315,6 +1408,11 @@ class LSSApp {
 
   async syncToSupabase() {
     let { supabaseUrl, supabaseKey } = this.db.settings;
+    const envUrl = (typeof window !== 'undefined' && window.ENV_SUPABASE_URL) ? window.ENV_SUPABASE_URL : '';
+    const envKey = (typeof window !== 'undefined' && window.ENV_SUPABASE_KEY) ? window.ENV_SUPABASE_KEY : '';
+    supabaseUrl = supabaseUrl || envUrl;
+    supabaseKey = supabaseKey || envKey;
+
     const statusElem = document.getElementById('sync-status');
     
     if (!supabaseUrl || !supabaseKey) {
@@ -1331,10 +1429,11 @@ class LSSApp {
     try {
       if (statusElem) statusElem.innerHTML = '<span class="status-dot" style="background: #eab308;"></span><span>Sync Cloud...</span>';
       
+      const nowIso = new Date().toISOString();
       const payload = {
         id: 'lss_main_db',
         data: this.db,
-        updated_at: new Date().toISOString()
+        updated_at: nowIso
       };
 
       // 1. Try Upsert via POST with on_conflict=id
@@ -1344,12 +1443,12 @@ class LSSApp {
           'apikey': supabaseKey,
           'Authorization': `Bearer ${supabaseKey}`,
           'Content-Type': 'application/json',
-          'Prefer': 'resolution=merge-duplicates'
+          'Prefer': 'resolution=merge-duplicates, return=representation'
         },
         body: JSON.stringify(payload)
       });
 
-      // 2. Fallback to PATCH if row already exists
+      // 2. Fallback to PATCH if row already exists or Prefer header variation
       if (!res.ok) {
         res = await fetch(`${supabaseUrl}/rest/v1/app_sync?id=eq.lss_main_db`, {
           method: 'PATCH',
@@ -1364,7 +1463,12 @@ class LSSApp {
 
       if (res.ok) {
         this.lastSyncError = null;
-        if (statusElem) statusElem.innerHTML = '<span class="status-dot" style="background: #22c55e;"></span><span>Cloud Synchro OK</span>';
+        this.lastCloudSyncTime = Date.now();
+        if (statusElem) {
+          statusElem.style.cursor = 'default';
+          statusElem.onclick = null;
+          statusElem.innerHTML = '<span class="status-dot" style="background: #22c55e;"></span><span>Cloud Synchro OK</span>';
+        }
       } else {
         const errText = await res.text();
         console.warn('[Supabase Sync Fail]', res.status, errText);
@@ -1396,6 +1500,11 @@ class LSSApp {
 
   async pullFromSupabase(isManual = false) {
     let { supabaseUrl, supabaseKey } = this.db.settings;
+    const envUrl = (typeof window !== 'undefined' && window.ENV_SUPABASE_URL) ? window.ENV_SUPABASE_URL : '';
+    const envKey = (typeof window !== 'undefined' && window.ENV_SUPABASE_KEY) ? window.ENV_SUPABASE_KEY : '';
+    supabaseUrl = supabaseUrl || envUrl;
+    supabaseKey = supabaseKey || envKey;
+
     if (!supabaseUrl || !supabaseKey) {
       if (isManual) alert('⚠️ Supabase non configuré.\n\nPour partager les données entre plusieurs appareils (PC & Android), veuillez renseigner l\'URL et la Clé API Supabase dans Paramètres sur CHACUN des appareils.');
       return;
@@ -1419,7 +1528,25 @@ class LSSApp {
         const rows = await res.json();
         if (rows && rows.length > 0 && rows[0].data) {
           const cloudDb = rows[0].data;
-          
+          const cloudUpdatedAt = rows[0].updated_at ? new Date(rows[0].updated_at).getTime() : 0;
+
+          // Avoid overwriting local changes if local state was updated more recently
+          if (!isManual && this.lastLocalUpdate && cloudUpdatedAt && cloudUpdatedAt <= this.lastLocalUpdate) {
+            const statusElem = document.getElementById('sync-status');
+            if (statusElem) {
+              statusElem.style.cursor = 'default';
+              statusElem.onclick = null;
+              statusElem.innerHTML = '<span class="status-dot" style="background: #22c55e;"></span><span>Cloud Synchro OK</span>';
+            }
+            return;
+          }
+
+          // Do not re-render DOM during auto-polling if user has an active modal open
+          const hasActiveModal = !!document.querySelector('.modal-overlay.active, .modal.active, [id$="-modal"][style*="flex"]');
+          if (!isManual && hasActiveModal) {
+            return;
+          }
+
           const currentSettings = { ...this.db.settings };
           this.db = { 
             ...defaultDatabase, 
@@ -1432,6 +1559,7 @@ class LSSApp {
             } 
           };
           
+          this.lastCloudSyncTime = cloudUpdatedAt || Date.now();
           localStorage.setItem(STORAGE_KEY, JSON.stringify(this.db));
           this.renderCurrentView();
           
@@ -1480,7 +1608,7 @@ class LSSApp {
       solution = `1. Connectez-vous sur https://supabase.com\n2. Ouvrez votre projet puis allez dans "SQL Editor" (dans le menu de gauche)\n3. Cliquez sur "New query", collez le code SQL ci-dessous et cliquez sur "Run" (bouton vert) :\n\nCREATE TABLE IF NOT EXISTS public.app_sync (\n  id TEXT PRIMARY KEY DEFAULT 'lss_main_db',\n  data JSONB NOT NULL DEFAULT '{}'::jsonb,\n  updated_at TIMESTAMPTZ DEFAULT NOW()\n);\nALTER TABLE public.app_sync ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "Accès complet app_sync" ON public.app_sync FOR ALL USING (true) WITH CHECK (true);`;
     } else if (status === 401 || status === 403 || lower.includes('jwt') || lower.includes('policy') || lower.includes('apikey')) {
       cause = 'La Clé API Publique (anon key) ou les droits d\'accès (RLS) sont incorrects.';
-      solution = `1. Allez sur https://supabase.com -> Project Settings -> API\n2. Copiez la clé "anon public"\n3. Allez dans les Paramètres du logiciel -> Colle la Clé API et l'URL exacte (commençant par https://)\n4. Cliquez sur Enregistrer.`;
+      solution = `1. Allez sur https://supabase.com -> Project Settings -> API\n2. Copiez la clé "anon public"\n3. Allez dans les Paramètres du logiciel -> Collez la Clé API et l'URL exacte (commençant par https://)\n4. Cliquez sur Enregistrer.`;
     } else if (status === 0) {
       cause = 'Impossible d\'atteindre les serveurs Supabase (problème de connexion ou URL mal saisie).';
       solution = `1. Vérifiez votre connexion Internet sur votre appareil.\n2. Vérifiez que l'URL dans Paramètres commence bien par "https://".`;

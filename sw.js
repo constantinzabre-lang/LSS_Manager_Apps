@@ -1,5 +1,5 @@
-// Service Worker for LIVING STONE SERVICE (LSS) - Version 4.0
-const CACHE_NAME = 'lss-manager-cache-v4';
+// Service Worker for LIVING STONE SERVICE (LSS) - Version 4.1
+const CACHE_NAME = 'lss-manager-cache-v4.1';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

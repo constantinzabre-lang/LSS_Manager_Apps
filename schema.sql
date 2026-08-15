@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS public.logs (
 );
 
 -- =========================================================================
--- 10. Table de Synchronisation Cloud Multi-Appareils (JSON Sync)
+-- 10. Table de Synchronisation Cloud Multi-Appareils (JSON Sync Engine)
 CREATE TABLE IF NOT EXISTS public.app_sync (
   id TEXT PRIMARY KEY DEFAULT 'lss_main_db',
   data JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -145,8 +145,14 @@ CREATE TABLE IF NOT EXISTS public.app_sync (
 );
 
 -- =========================================================================
--- CONFIGURATION SECURITE & SUPABASE REALTIME
+-- CONFIGURATION DROITS & SÉCURITÉ SUPABASE RLS
 -- =========================================================================
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated;
+
 ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inventory ENABLE ROW LEVEL SECURITY;
@@ -158,21 +164,38 @@ ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.app_sync ENABLE ROW LEVEL SECURITY;
 
--- Politiques RLS permissives pour l'application cliente
-CREATE POLICY "Accès complet settings" ON public.settings FOR ALL USING (true);
-CREATE POLICY "Accès complet clients" ON public.clients FOR ALL USING (true);
-CREATE POLICY "Accès complet inventory" ON public.inventory FOR ALL USING (true);
-CREATE POLICY "Accès complet tickets" ON public.tickets FOR ALL USING (true);
-CREATE POLICY "Accès complet projects" ON public.projects FOR ALL USING (true);
-CREATE POLICY "Accès complet students" ON public.students FOR ALL USING (true);
-CREATE POLICY "Accès complet invoices" ON public.invoices FOR ALL USING (true);
-CREATE POLICY "Accès complet expenses" ON public.expenses FOR ALL USING (true);
-CREATE POLICY "Accès complet logs" ON public.logs FOR ALL USING (true);
+-- Politiques RLS avec WITH CHECK (true) pour autoriser SELECT, INSERT, UPDATE, DELETE
+DROP POLICY IF EXISTS "Accès complet settings" ON public.settings;
+DROP POLICY IF EXISTS "Accès complet clients" ON public.clients;
+DROP POLICY IF EXISTS "Accès complet inventory" ON public.inventory;
+DROP POLICY IF EXISTS "Accès complet tickets" ON public.tickets;
+DROP POLICY IF EXISTS "Accès complet projects" ON public.projects;
+DROP POLICY IF EXISTS "Accès complet students" ON public.students;
+DROP POLICY IF EXISTS "Accès complet invoices" ON public.invoices;
+DROP POLICY IF EXISTS "Accès complet expenses" ON public.expenses;
+DROP POLICY IF EXISTS "Accès complet logs" ON public.logs;
+DROP POLICY IF EXISTS "Accès complet app_sync" ON public.app_sync;
+
+CREATE POLICY "Accès complet settings" ON public.settings FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Accès complet clients" ON public.clients FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Accès complet inventory" ON public.inventory FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Accès complet tickets" ON public.tickets FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Accès complet projects" ON public.projects FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Accès complet students" ON public.students FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Accès complet invoices" ON public.invoices FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Accès complet expenses" ON public.expenses FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Accès complet logs" ON public.logs FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Accès complet app_sync" ON public.app_sync FOR ALL USING (true) WITH CHECK (true);
 
--- Activation du Temps Réel Supabase (Publication)
-DROP PUBLICATION IF EXISTS supabase_realtime;
-CREATE PUBLICATION supabase_realtime FOR TABLE 
+-- Activation Sécurisée du Temps Réel Supabase (Publication)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    CREATE PUBLICATION supabase_realtime;
+  END IF;
+END $$;
+
+ALTER PUBLICATION supabase_realtime ADD TABLE 
   public.settings, 
   public.clients, 
   public.inventory, 
@@ -183,4 +206,3 @@ CREATE PUBLICATION supabase_realtime FOR TABLE
   public.expenses, 
   public.logs,
   public.app_sync;
-

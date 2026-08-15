@@ -1,0 +1,19 @@
+{
+  "name": "lss-manager-apps",
+  "version": "1.0.0",
+  "description": "Logiciel de gestion globale pour Living Stone Service (LSS) - Ouagadougou, Burkina Faso",
+  "main": "app.js",
+  "scripts": {
+    "dev": "npx -y serve .",
+    "check": "node --check app.js && node --check sw.js"
+  },
+  "keywords": [
+    "pwa",
+    "lss",
+    "supabase",
+    "vercel",
+    "management"
+  ],
+  "author": "ZABRE S. Constantin (Living Stone Service)",
+  "license": "MIT"
+}
