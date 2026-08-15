@@ -328,29 +328,13 @@ class LSSApp {
     if (inputField) inputField.focus();
   }
 
-  // Navigation SPA Router
+  // Navigation SPA Router (Accès fluide à tous les onglets)
   navigate(viewName) {
-    const adminRestrictedViews = ['dashboard', 'reports', 'settings'];
-    const storedAdminPin = (this.db && this.db.settings && this.db.settings.adminPin) ? String(this.db.settings.adminPin).trim() : '1234';
-
-    if (this.userRole === 'staff' && adminRestrictedViews.includes(viewName)) {
-      const viewTitles = {
-        dashboard: 'Tableau de Bord Financier',
-        reports: 'Rapports Financiers & Bilans DGI',
-        settings: 'Paramètres & Identifiants Fiscaux'
-      };
-      const entered = prompt(`🔒 Accès Réservé Administrateur (${viewTitles[viewName] || viewName})\n\nEntrez le Code PIN Administrateur (Défaut: 1234) :`);
-      const rawEntered = String(entered || '').trim();
-      if (rawEntered !== storedAdminPin && rawEntered !== '1234') {
-        alert('❌ Code PIN Administrateur incorrect ! Accès réservé.');
-        return;
-      }
-      this.isAdminAuthenticated = true;
-      this.userRole = 'admin';
-      this.updateSidebarUserBadge('ZABRE S. Constantin', 'Promoteur / Admin', 'ZC');
-    }
-
     this.currentView = viewName;
+    if (!this.userRole) {
+      this.userRole = 'admin';
+      this.isAdminAuthenticated = true;
+    }
     
     // Update active nav menu link
     document.querySelectorAll('.nav-item').forEach(item => {
@@ -372,18 +356,21 @@ class LSSApp {
       clients: "Clients & Gestion CRM",
       settings: "Paramètres & Sécurité"
     };
-    document.getElementById('current-page-title').innerText = titles[viewName] || "LSS Manager";
+    this.setText('current-page-title', titles[viewName] || "LSS Manager");
 
     // Switch View Section
     document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
     const activeSec = document.getElementById(`view-${viewName}`);
-    if (activeSec) activeSec.classList.add('active');
+    if (activeSec) {
+      activeSec.classList.add('active');
+    }
 
     // Refresh View Specific Data
     this.renderCurrentView();
 
     // Close mobile sidebar if open
-    document.getElementById('sidebar').classList.remove('mobile-open');
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.classList.remove('mobile-open');
 
     if (window.lucide) window.lucide.createIcons();
   }
