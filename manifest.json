@@ -1,12 +1,10 @@
 {
   "name": "Living Stone Service Manager",
   "short_name": "LSS Manager",
-  "description": "Logiciel de gestion globale pour Living Stone Service (LSS) - Ouagadougou, Burkina Faso",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0252df",
-  "orientation": "any",
   "icons": [
     {
       "src": "logo.png",
