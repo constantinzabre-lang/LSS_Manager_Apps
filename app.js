@@ -1037,7 +1037,7 @@ class LSSApp {
     if (window.lucide) window.lucide.createIcons();
   }
 
-  // GÉNÉRATION ATTESTATION DE FIN DE STAGE PRATIQUE (MODÈLE OFFICIEL LSS)
+  // GÉNÉRATION ATTESTATION DE FIN DE STAGE PRATIQUE (PLEIN CADRE A4)
   printStudentCertificate(studentId) {
     const student = (this.db && Array.isArray(this.db.students))
       ? this.db.students.find(s => s.id === studentId)
@@ -1054,7 +1054,6 @@ class LSSApp {
       return;
     }
 
-    // Gestion des compétences par défaut si non spécifiées
     const skillsList = student.skills && student.skills.length > 0 ? student.skills : [
       "Diagnostic matériel (surpression/surtension) et dépannage des pannes complexes de PC/Laptops.",
       "Démontage, assemblage, nettoyage des composants et maintenance préventive.",
@@ -1070,7 +1069,7 @@ class LSSApp {
         <style>
           @page {
             size: A4 portrait;
-            margin: 12mm 14mm 12mm 14mm;
+            margin: 10mm 12mm;
           }
           * {
             box-sizing: border-box;
@@ -1078,22 +1077,23 @@ class LSSApp {
             print-color-adjust: exact;
           }
           html, body {
+            height: 100%;
             margin: 0;
             padding: 0;
             background: #fff;
             color: #0f172a;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            font-size: 13.5px;
           }
           
-          /* CADRE EXTÉRIEUR BICOLORE PLEINE HAUTEUR */
+          /* CONTENEUR QUI S'ÉTEND STRICTEMENT SUR TOUTE LA HAUTEUR A4 */
           .cert-container {
             border: 2.5px solid #0284c7;
             outline: 1.5px solid #ea580c;
             outline-offset: -5px;
-            padding: 24px 30px 20px 30px;
+            padding: 24px 28px 18px 28px;
             background: #ffffff;
-            min-height: 258mm; /* Remplit précisément toute la feuille A4 */
+            height: 272mm; /* Hauteur exacte de la zone imprimable */
+            box-sizing: border-box;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -1106,7 +1106,6 @@ class LSSApp {
             width: 100%;
             border-bottom: 2px solid #0284c7;
             padding-bottom: 12px;
-            margin-bottom: 8px;
           }
           .header-left {
             width: 38%;
@@ -1133,11 +1132,11 @@ class LSSApp {
             color: #334155;
           }
           .header-right strong {
-            font-size: 12.5px;
+            font-size: 12px;
             color: #0284c7;
           }
 
-          /* TITRES ET INFORMATIONS PRINCIPALES */
+          /* TITRES ET TEXTES */
           .cert-title {
             text-align: center;
             font-size: 21px;
@@ -1145,20 +1144,20 @@ class LSSApp {
             color: #0369a1;
             letter-spacing: 1px;
             text-transform: uppercase;
-            margin: 8px 0 2px 0;
+            margin: 12px 0 2px 0;
           }
           .cert-ref {
             text-align: center;
             font-size: 12px;
             font-weight: 700;
             color: #475569;
-            margin-bottom: 15px;
+            margin-bottom: 16px;
           }
           .cert-intro {
             text-align: center;
             font-size: 13.5px;
             color: #334155;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
           }
           .student-name {
             text-align: center;
@@ -1171,19 +1170,19 @@ class LSSApp {
           }
           .dotted-line {
             width: 200px;
-            margin: 0 auto 12px auto;
+            margin: 0 auto 14px auto;
             border-bottom: 2px dashed #0284c7;
           }
           .course-container {
             text-align: center;
-            margin: 12px 0;
+            margin: 14px 0;
           }
           .course-pill {
             display: inline-block;
             background: #f0f9ff;
             border: 2px solid #0284c7;
             color: #0369a1;
-            padding: 9px 28px;
+            padding: 10px 28px;
             border-radius: 24px;
             font-size: 14px;
             font-weight: 800;
@@ -1194,42 +1193,41 @@ class LSSApp {
             text-align: center;
             font-size: 13.5px;
             color: #334155;
-            margin: 12px 0 18px 0;
+            margin: 14px 0 20px 0;
           }
 
-          /* ENCADRÉ DES COMPÉTENCES */
+          /* BLOC COMPÉTENCES */
           .skills-box {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
-            padding: 16px 22px;
-            margin-bottom: 15px;
+            padding: 18px 24px;
+            margin-bottom: 16px;
           }
           .skills-title {
             font-weight: 700;
-            font-size: 13px;
+            font-size: 13.5px;
             color: #0f172a;
             margin-bottom: 8px;
           }
           .skills-list {
             margin: 0;
-            padding-left: 20px;
+            padding-left: 22px;
             color: #334155;
             font-size: 12.5px;
-            line-height: 1.65;
+            line-height: 1.7;
           }
 
-          /* PIED DE PAGE & SIGNATURES */
+          /* MENTION LÉGALE & SIGNATURE */
           .legal-mention {
             text-align: center;
             font-style: italic;
             font-size: 12.5px;
             color: #475569;
-            margin: 12px 0 20px 0;
+            margin: 14px 0 24px 0;
           }
           .footer-table {
             width: 100%;
-            margin-top: 10px;
             margin-bottom: 10px;
           }
           .footer-date {
@@ -1253,18 +1251,18 @@ class LSSApp {
             font-size: 14px;
             font-weight: 700;
             color: #0369a1;
-            margin-top: 40px;
+            margin-top: 45px;
           }
           .footer-signature .sub {
             font-size: 11px;
             color: #64748b;
           }
 
-          /* LIGNE POINTILLÉE & DEVISE BAS DE PAGE */
+          /* BAS DE PAGE DEVISE */
           .motto-separator {
             width: 100%;
             border-bottom: 1px dashed #cbd5e1;
-            margin: 15px 0 8px 0;
+            margin: 14px 0 8px 0;
           }
           .motto {
             text-align: center;
@@ -1273,85 +1271,87 @@ class LSSApp {
             color: #0369a1;
             font-weight: 500;
           }
+          @media print {
+            body { padding: 0; }
+          }
         </style>
       </head>
       <body>
         <div class="cert-container">
-          <!-- EN-TÊTE 3 COLONNES -->
-          <table class="header-table">
-            <tr>
-              <td class="header-left">
-                <strong>LIVING STONE SERVICE (LSS)</strong><br>
-                Entreprise Individuelle<br>
-                N° IFU : 00320159Z<br>
-                N° RCCM : BF-OUA-01-2026-A10-13450
-              </td>
-              <td class="header-center">
-                <img src="logo.png" alt="LSS" style="width: 70px; height: auto;" onerror="this.src='https://via.placeholder.com/70x70?text=LSS';">
-              </td>
-              <td class="header-right">
-                <strong>MAINTENANCE & FORMATIONS</strong><br>
-                Ouagadougou, Burkina Faso<br>
-                Tél : +226 70 00 00 00 / +226 76 00 00 00<br>
-                constantinzabre@gmail.com
-              </td>
-            </tr>
-          </table>
+          <!-- HAUT : EN-TÊTE -->
+          <div>
+            <table class="header-table">
+              <tr>
+                <td class="header-left">
+                  <strong>LIVING STONE SERVICE (LSS)</strong><br>
+                  Entreprise Individuelle<br>
+                  N° IFU : 00320159Z<br>
+                  N° RCCM : BF-OUA-01-2026-A10-13450
+                </td>
+                <td class="header-center">
+                  <img src="logo.png" alt="LSS" style="width: 75px; height: auto;" onerror="this.src='https://via.placeholder.com/75x75?text=LSS';">
+                </td>
+                <td class="header-right">
+                  <strong>MAINTENANCE & FORMATIONS</strong><br>
+                  Ouagadougou, Burkina Faso<br>
+                  Tél : +226 70 00 00 00 / +226 76 00 00 00<br>
+                  constantinzabre@gmail.com
+                </td>
+              </tr>
+            </table>
 
-          <!-- TITRE DE L'ATTESTATION -->
-          <div class="cert-title">ATTESTATION DE FIN DE STAGE PRATIQUE</div>
-          <div class="cert-ref">ATT-LSS-2026-${student.id ? student.id.replace(/\D/g, '') || '787' : '787'}</div>
+            <div class="cert-title">ATTESTATION DE FIN DE STAGE PRATIQUE</div>
+            <div class="cert-ref">ATT-LSS-2026-${student.id ? student.id.replace(/\D/g, '') || '787' : '787'}</div>
 
-          <!-- CORPS DE TEXTE -->
-          <div class="cert-intro">
-            Le Promoteur de l'Entreprise Individuelle <strong>LIVING STONE SERVICE (LSS)</strong> atteste que :
+            <div class="cert-intro">
+              Le Promoteur de l'Entreprise Individuelle <strong>LIVING STONE SERVICE (LSS)</strong> atteste que :
+            </div>
+
+            <div class="student-name">${student.fullName || 'SANOU BINTOU'}</div>
+            <div class="dotted-line"></div>
+
+            <div class="cert-intro">
+              a suivi avec assiduité et succès un stage pratique de formation professionnelle en :
+            </div>
+
+            <div class="course-container">
+              <div class="course-pill">${student.courseTitle || student.filiere || student.track || 'INITIATION EN MAINTENANCE INFORMATIQUE'}</div>
+            </div>
+
+            <div class="period-text">
+              effectué dans nos ateliers à Ouagadougou du <strong>${student.periodStart || student.startDate || '2026-06-01'}</strong> au <strong>${student.periodEnd || student.endDate || '2026-08-01'}</strong>.
+            </div>
+
+            <div class="skills-box">
+              <div class="skills-title">Compétences Pratiques Validées :</div>
+              <ul class="skills-list">
+                ${skillsList.map(skill => `<li>${skill}</li>`).join('')}
+              </ul>
+            </div>
+
+            <div class="legal-mention">
+              En foi de quoi, la présente attestation lui est délivrée pour servir et valoir ce que de droit.
+            </div>
           </div>
 
-          <div class="student-name">${student.fullName || 'LANKOANDE NOÉ'}</div>
-          <div class="dotted-line"></div>
+          <!-- BAS : DATE, SIGNATURE ET DEVISE -->
+          <div>
+            <table class="footer-table">
+              <tr>
+                <td class="footer-date">
+                  Fait à Ouagadougou, le <strong>${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+                </td>
+                <td class="footer-signature">
+                  <div class="role">LE PROMOTEUR</div>
+                  <div class="name">ZABRE S. Constantin</div>
+                  <div class="sub">(Cachet & Signature Officiels)</div>
+                </td>
+              </tr>
+            </table>
 
-          <div class="cert-intro">
-            a suivi avec assiduité et succès un stage pratique de formation professionnelle en :
+            <div class="motto-separator"></div>
+            <div class="motto">« L'Excellence & la Qualité au Service de l'Innovation IT »</div>
           </div>
-
-          <div class="course-container">
-            <div class="course-pill">${student.courseTitle || student.filiere || student.track || 'MAINTENANCE INFORMATIQUE & SECRÉTARIAT NUMÉRIQUE'}</div>
-          </div>
-
-          <div class="period-text">
-            effectué dans nos ateliers à Ouagadougou du <strong>${student.periodStart || student.startDate || '2026-07-23'}</strong> au <strong>${student.periodEnd || student.endDate || '2026-08-22'}</strong>.
-          </div>
-
-          <!-- BLOC COMPÉTENCES VALIDÉES -->
-          <div class="skills-box">
-            <div class="skills-title">Compétences Pratiques Validées :</div>
-            <ul class="skills-list">
-              ${skillsList.map(skill => `<li>${skill}</li>`).join('')}
-            </ul>
-          </div>
-
-          <!-- MENTION LÉGALE -->
-          <div class="legal-mention">
-            En foi de quoi, la présente attestation lui est délivrée pour servir et valoir ce que de droit.
-          </div>
-
-          <!-- SIGNATURES -->
-          <table class="footer-table">
-            <tr>
-              <td class="footer-date">
-                Fait à Ouagadougou, le <strong>${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
-              </td>
-              <td class="footer-signature">
-                <div class="role">LE PROMOTEUR</div>
-                <div class="name">ZABRE S. Constantin</div>
-                <div class="sub">(Cachet & Signature Officiels)</div>
-              </td>
-            </tr>
-          </table>
-
-          <!-- SÉPARATEUR POINTILLÉ ET DEVISE -->
-          <div class="motto-separator"></div>
-          <div class="motto">« L'Excellence & la Qualité au Service de l'Innovation IT »</div>
         </div>
 
         <script>
