@@ -358,7 +358,8 @@ body {
   }
 }
 
-.stat-card, .kpi-card {
+/* Ajustement de la taille de texte et du padding des cartes KPI */
+.kpi-card, .stat-card {
   width: 100% !important;
   min-height: 110px !important;
   background: var(--glass-card);
@@ -366,9 +367,9 @@ body {
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
-  padding: 20px;
+  padding: 12px 14px !important;
   position: relative;
-  overflow: hidden;
+  overflow: hidden !important;
   transition: var(--transition-fast);
 }
 
@@ -417,16 +418,20 @@ body {
   justify-content: center;
 }
 
-.kpi-value {
-  font-size: 24px;
-  font-weight: 800;
+.kpi-value, .stat-value {
+  font-size: 1.15rem !important;
+  font-weight: 800 !important;
   letter-spacing: -0.5px;
   margin-bottom: 6px;
+  white-space: nowrap !important;
 }
 
-.kpi-subtitle {
-  font-size: 12px;
+.kpi-subtitle, .stat-subtitle {
+  font-size: 10.5px !important;
   color: var(--text-muted);
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
 /* Glass Cards & Panels */
