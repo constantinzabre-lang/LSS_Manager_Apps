@@ -1750,30 +1750,36 @@ class LSSApp {
   }
 
   // 7. EXPENSES
+  // RENDU DU JOURNAL DES DÉPENSES
   renderExpenses() {
     const tbody = document.getElementById('expenses-tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    if (this.db && Array.isArray(this.db.expenses)) {
-      this.db.expenses.forEach(e => {
-        tbody.innerHTML += `
-          <tr>
-            <td><strong>${e.id}</strong></td>
-            <td>${e.date}</td>
-            <td><span class="badge badge-purple">${e.category}</span></td>
-            <td>${e.description}</td>
-            <td><strong style="color: var(--accent-danger);">${this.formatFCFA(e.amount)}</strong></td>
-            <td>${e.paymentMethod || 'Espèces'}</td>
-            <td>
-              <button class="btn btn-secondary btn-sm" onclick="app.printExpenseVoucher('${e.id}')">
-                <i data-lucide="printer"></i> Bon Décaissement
-              </button>
-            </td>
-          </tr>
-        `;
-      });
-      if (window.lucide) window.lucide.createIcons();
+
+    const list = (this.db && Array.isArray(this.db.expenses)) ? this.db.expenses : [];
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Aucune dépense enregistrée</td></tr>';
+      return;
     }
+
+    list.forEach(e => {
+      tbody.innerHTML += `
+        <tr>
+          <td><strong>${e.id}</strong></td>
+          <td>${e.date}</td>
+          <td><span class="badge badge-warning">${e.category}</span></td>
+          <td>${e.description}</td>
+          <td style="color: var(--danger-color); font-weight: 800;">${this.formatFCFA(e.amount)}</td>
+          <td>
+            <button class="btn btn-secondary btn-sm" onclick="app.printExpenseVoucher('${e.id}')" title="Imprimer Bon de Caisse">
+              <i data-lucide="receipt"></i> Bon A4
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+
+    if (window.lucide) window.lucide.createIcons();
   }
 
   saveExpense(e) {
