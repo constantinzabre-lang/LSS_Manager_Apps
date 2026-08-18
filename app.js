@@ -754,11 +754,12 @@ class LSSApp {
             <td>${p.category}</td>
             <td><strong>${this.formatFCFA(p.budgetTTC)}</strong></td>
             <td><span class="badge ${this.getBadgeClass(p.status)}">${p.status}</span></td>
-            <td><button class="btn btn-secondary btn-sm" onclick="alert('Détails du contrat enregistré.')">Fiche</button></td>
+            <td><button class="btn btn-secondary btn-sm" onclick="app.printProjectSheet('${p.id}')"><i data-lucide="printer"></i> Fiche A4</button></td>
           </tr>
         `;
       });
     }
+    if (window.lucide) window.lucide.createIcons();
   }
 
   saveProject(e) {
@@ -775,6 +776,218 @@ class LSSApp {
     this.saveDatabase();
     this.closeModal('modal-project');
     this.renderProjects();
+  }
+
+  // GÉNÉRATION DE LA FICHE PROJET / ORDRE DE MISSION A4
+  printProjectSheet(projectId) {
+    const project = (this.db && Array.isArray(this.db.projects)) 
+      ? this.db.projects.find(p => p.id === projectId) 
+      : null;
+
+    if (!project) {
+      alert("Projet introuvable !");
+      return;
+    }
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      alert("Veuillez autoriser les pop-ups dans Safari pour imprimer la fiche.");
+      return;
+    }
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head>
+        <meta charset="UTF-8">
+        <title>Ordre de Mission & Fiche Projet - ${project.id}</title>
+        <style>
+          @page { size: A4 portrait; margin: 15mm; }
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #1e293b;
+            margin: 0;
+            padding: 20px;
+            font-size: 13px;
+            line-height: 1.5;
+            background: #fff;
+          }
+          .header-table { width: 100%; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 20px; }
+          .company-title { font-size: 20px; font-weight: 800; color: #0f172a; text-transform: uppercase; margin: 0; }
+          .company-subtitle { font-size: 11px; color: #64748b; margin-top: 4px; }
+          .doc-badge {
+            text-align: right;
+            vertical-align: top;
+          }
+          .badge-title {
+            background: #0f172a;
+            color: #fff;
+            padding: 6px 14px;
+            font-size: 14px;
+            font-weight: 700;
+            display: inline-block;
+            border-radius: 4px;
+            text-transform: uppercase;
+          }
+          .grid-2 {
+            display: table;
+            width: 100%;
+            margin-bottom: 20px;
+          }
+          .col-left { display: table-cell; width: 50%; vertical-align: top; padding-right: 15px; }
+          .col-right { display: table-cell; width: 50%; vertical-align: top; padding-left: 15px; }
+          .box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+          }
+          .box-title { font-weight: 700; font-size: 12px; text-transform: uppercase; color: #334155; margin-bottom: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; }
+          .info-row { margin-bottom: 5px; font-size: 12px; }
+          .info-label { font-weight: 600; color: #475569; }
+          
+          .section-title {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #0f172a;
+            border-bottom: 1.5px solid #0f172a;
+            padding-bottom: 4px;
+            margin: 20px 0 10px 0;
+          }
+          .table-specs {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+          }
+          .table-specs th {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 8px 10px;
+            text-align: left;
+            font-size: 12px;
+          }
+          .table-specs td {
+            border: 1px solid #cbd5e1;
+            padding: 8px 10px;
+            font-size: 12px;
+          }
+          .signatures {
+            margin-top: 40px;
+            display: table;
+            width: 100%;
+          }
+          .sign-col {
+            display: table-cell;
+            width: 50%;
+            vertical-align: top;
+            text-align: center;
+          }
+          .sign-box {
+            margin-top: 50px;
+            font-size: 11px;
+            color: #64748b;
+          }
+          @media print {
+            body { padding: 0; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <table class="header-table">
+          <tr>
+            <td>
+              <h1 class="company-title">LIVING STONE SERVICE</h1>
+              <div class="company-subtitle">
+                Expertise Matériel, Maintenance Électronique & Réseaux<br>
+                Ouagadougou, Burkina Faso | Tél : +226 70 00 00 00 / 64 07 78 64<br>
+                N° IFU : 00320159Z — RCCM : BF-OUA-01-2026-A10-13450
+              </div>
+            </td>
+            <td class="doc-badge">
+              <div class="badge-title">ORDRE DE MISSION IT</div>
+              <div style="font-size: 12px; font-weight: 700; margin-top: 6px;">Réf : ${project.id}</div>
+              <div style="font-size: 11px; color: #64748b;">Date : ${new Date().toLocaleDateString('fr-FR')}</div>
+            </td>
+          </tr>
+        </table>
+
+        <div class="grid-2">
+          <div class="col-left">
+            <div class="box">
+              <div class="box-title">Données du Prestataire</div>
+              <div class="info-row"><span class="info-label">Structure :</span> LIVING STONE SERVICE</div>
+              <div class="info-row"><span class="info-label">Intervenant :</span> ZABRE Souleymane Constantin</div>
+              <div class="info-row"><span class="info-label">Qualité :</span> Consultant / Spécialiste Système & Réseau</div>
+            </div>
+          </div>
+          <div class="col-right">
+            <div class="box">
+              <div class="box-title">Données du Client / Bénéficiaire</div>
+              <div class="info-row"><span class="info-label">Client :</span> <strong>${project.clientName || 'Société Partenaire'}</strong></div>
+              <div class="info-row"><span class="info-label">Contact / Tél :</span> ${project.clientPhone || 'Non spécifié'}</div>
+              <div class="info-row"><span class="info-label">Statut Projet :</span> <span style="font-weight: 700; color: #0284c7;">${project.status || 'En cours'}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title">Objet de l'intervention & Spécifications</div>
+        <div class="box" style="margin-bottom: 20px;">
+          <div class="info-row"><span class="info-label">Intitulé du contrat :</span> <strong>${project.title}</strong></div>
+          <div class="info-row"><span class="info-label">Domaine technique :</span> ${project.category || 'Audit, Réseau & Infrastructure'}</div>
+          <div class="info-row" style="margin-top: 8px;"><span class="info-label">Description / Cahier des charges :</span><br>
+            <p style="margin: 4px 0 0 0; color: #334155; font-size: 12px;">
+              ${project.description || 'Prestation comprenant le diagnostic, l\'audit d\'infrastructure réseau, la sécurisation des équipements et l\'optimisation du câblage de la baie informatique.'}
+            </p>
+          </div>
+        </div>
+
+        <div class="section-title">Valorisation Financière (CGI Burkina Faso)</div>
+        <table class="table-specs">
+          <thead>
+            <tr>
+              <th>Désignation de la Prestation</th>
+              <th>Base HT</th>
+              <th>Taux TVA</th>
+              <th style="text-align: right;">Budget Total TTC</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>${project.title}</strong><br><span style="font-size: 11px; color: #64748b;">Mise en œuvre, configuration et recette technique sur site</span></td>
+              <td>${this.formatFCFA(Math.round((project.budgetTTC || 0) / 1.18))}</td>
+              <td>18%</td>
+              <td style="text-align: right; font-weight: 800; font-size: 13px;">${this.formatFCFA(project.budgetTTC || 0)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="signatures">
+          <div class="sign-col">
+            <strong>Pour Living Stone Service</strong><br>
+            <span style="font-size: 11px;">Le Consultant IT</span>
+            <div class="sign-box">Signature & Cachet</div>
+          </div>
+          <div class="sign-col">
+            <strong>Pour le Client</strong><br>
+            <span style="font-size: 11px;">Bon pour exécution et réception</span>
+            <div class="sign-box">Nom, Date & Signature</div>
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() {
+            window.print();
+          };
+        <\/script>
+      </body>
+      </html>
+    `;
+
+    printWin.document.open();
+    printWin.document.write(htmlContent);
+    printWin.document.close();
   }
 
   // 5. ACADEMY / STUDENTS
