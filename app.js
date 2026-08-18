@@ -125,7 +125,6 @@ class LSSApp {
     this.init();
   }
 
-  // Load Database from LocalStorage or Seed Defaults
   loadDatabase() {
     const data = localStorage.getItem(STORAGE_KEY);
     if (!data) {
@@ -134,7 +133,6 @@ class LSSApp {
     }
     try {
       const parsed = JSON.parse(data);
-      // Merge missing structures if updated
       const settings = { ...defaultDatabase.settings, ...parsed.settings };
       if (!settings.adminPin) settings.adminPin = '1234';
       if (!settings.staffPin) settings.staffPin = '5678';
@@ -156,46 +154,37 @@ class LSSApp {
   }
 
   init() {
-    // Force session Admin active et masquage du verrouillage au lancement
     this.isAdminAuthenticated = true;
     this.userRole = 'admin';
     const lockScreen = document.getElementById('lock-screen');
     if (lockScreen) lockScreen.classList.remove('active');
     this.updateSidebarUserBadge('ZABRE S. Constantin', 'Promoteur / Admin', 'ZC');
 
-    // Apply Theme
     document.documentElement.setAttribute('data-theme', this.db.settings.theme || 'dark');
     
-    // Register Service Worker for PWA (Version 5.0 Network First)
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(regs => {
         regs.forEach(reg => reg.update());
       });
       navigator.serviceWorker.register('./sw.js').then(reg => {
         reg.update();
-        console.log('[PWA] Service Worker v5.0 Active');
+        console.log('[PWA] Service Worker Active');
       }).catch(err => console.warn('[PWA] SW Error', err));
     }
 
-    // Initialize Lucide Icons
     if (window.lucide) {
       window.lucide.createIcons();
     }
 
-    // Populate Settings Form
     this.loadSettingsForm();
-
-    // Render Initial View
     this.navigate(this.currentView);
 
-    // Initial Cloud Pull & Auto Polling every 10 seconds for multi-device sync
     this.pullFromSupabase(false);
     setInterval(() => {
       this.pullFromSupabase(false);
     }, 10000);
   }
 
-  // Security & Authentication Engine (Admin & Secrétariat)
   selectRoleTab(role) {
     this.selectedRole = role;
     const adminTab = document.getElementById('role-admin-tab');
@@ -328,7 +317,6 @@ class LSSApp {
     if (inputField) inputField.focus();
   }
 
-  // Navigation SPA Router (Accès fluide à tous les onglets)
   navigate(viewName) {
     this.currentView = viewName;
     if (!this.userRole) {
@@ -336,14 +324,12 @@ class LSSApp {
       this.isAdminAuthenticated = true;
     }
     
-    // Update active nav menu link
     document.querySelectorAll('.nav-item').forEach(item => {
       item.classList.remove('active');
     });
     const targetNav = Array.from(document.querySelectorAll('.nav-item')).find(el => el.getAttribute('onclick')?.includes(viewName));
     if (targetNav) targetNav.classList.add('active');
 
-    // Update Topbar Title
     const titles = {
       dashboard: "Tableau de bord",
       maintenance: "Maintenance Informatique & Dépannage",
@@ -358,17 +344,14 @@ class LSSApp {
     };
     this.setText('current-page-title', titles[viewName] || "LSS Manager");
 
-    // Switch View Section
     document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
     const activeSec = document.getElementById(`view-${viewName}`);
     if (activeSec) {
       activeSec.classList.add('active');
     }
 
-    // Refresh View Specific Data
     this.renderCurrentView();
 
-    // Close mobile sidebar if open
     const sidebar = document.getElementById('sidebar');
     if (sidebar) sidebar.classList.remove('mobile-open');
 
@@ -384,10 +367,10 @@ class LSSApp {
   }
 
   toggleMobileSidebar() {
-    document.getElementById('sidebar').classList.toggle('mobile-open');
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.classList.toggle('mobile-open');
   }
 
-  // View Rendering Methods
   renderCurrentView() {
     switch (this.currentView) {
       case 'dashboard':
@@ -420,9 +403,8 @@ class LSSApp {
     }
   }
 
-  // 1. DASHBOARD RENDER
+  // 1. DASHBOARD
   renderDashboard() {
-    // Financial Computations
     let totalSalesTTC = 0;
     let totalSalesHT = 0;
     let totalVAT = 0;
@@ -453,7 +435,6 @@ class LSSApp {
     this.setText('kpi-tva', this.formatFCFA(totalVAT));
     this.setText('kpi-net-profit', this.formatFCFA(netProfit));
 
-    // Tickets Tbody
     const tbody = document.getElementById('dashboard-tickets-tbody');
     if (tbody) {
       tbody.innerHTML = '';
@@ -475,7 +456,6 @@ class LSSApp {
       }
     }
 
-    // Stock Alerts
     const alertsBox = document.getElementById('dashboard-stock-alerts');
     if (alertsBox) {
       alertsBox.innerHTML = '';
@@ -495,31 +475,34 @@ class LSSApp {
     }
   }
 
-  // 2. MAINTENANCE TICKETS
+  // 2. MAINTENANCE
   renderTickets() {
     const tbody = document.getElementById('tickets-tbody');
+    if (!tbody) return;
     tbody.innerHTML = '';
-    this.db.tickets.forEach(t => {
-      const waMessage = encodeURIComponent(`Bonjour ${t.clientName}, Living Stone Service vous informe que votre appareil (${t.deviceModel}) est au statut: ${t.status}. Montant: ${t.costTTC} FCFA.`);
-      const waLink = `https://wa.me/${t.clientPhone.replace(/[^0-9]/g, '')}?text=${waMessage}`;
+    if (this.db && Array.isArray(this.db.tickets)) {
+      this.db.tickets.forEach(t => {
+        const waMessage = encodeURIComponent(`Bonjour ${t.clientName}, Living Stone Service vous informe que votre appareil (${t.deviceModel}) est au statut: ${t.status}. Montant: ${t.costTTC} FCFA.`);
+        const waLink = `https://wa.me/${(t.clientPhone || '').replace(/[^0-9]/g, '')}?text=${waMessage}`;
 
-      tbody.innerHTML += `
-        <tr>
-          <td><strong>${t.id}</strong></td>
-          <td>${t.dateReceived}</td>
-          <td>${t.clientName}<br><small style="color: var(--text-muted);">${t.clientPhone}</small></td>
-          <td>${t.deviceModel}<br><small style="color: var(--text-muted);">${t.problemDesc}</small></td>
-          <td><span class="badge ${this.getBadgeClass(t.status)}">${t.status}</span></td>
-          <td><strong>${this.formatFCFA(t.costTTC)}</strong></td>
-          <td>
-            <div style="display: flex; gap: 6px;">
-              <button class="btn btn-secondary btn-sm" onclick="app.printTicketReceipt('${t.id}')"><i data-lucide="printer"></i> Reçu</button>
-              <a href="${waLink}" target="_blank" class="btn btn-success btn-sm"><i data-lucide="message-square"></i> WhatsApp</a>
-            </div>
-          </td>
-        </tr>
-      `;
-    });
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${t.id}</strong></td>
+            <td>${t.dateReceived}</td>
+            <td>${t.clientName}<br><small style="color: var(--text-muted);">${t.clientPhone}</small></td>
+            <td>${t.deviceModel}<br><small style="color: var(--text-muted);">${t.problemDesc}</small></td>
+            <td><span class="badge ${this.getBadgeClass(t.status)}">${t.status}</span></td>
+            <td><strong>${this.formatFCFA(t.costTTC)}</strong></td>
+            <td>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn btn-secondary btn-sm" onclick="app.printTicketReceipt('${t.id}')"><i data-lucide="printer"></i> Reçu</button>
+                <a href="${waLink}" target="_blank" class="btn btn-success btn-sm"><i data-lucide="message-square"></i> WhatsApp</a>
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+    }
   }
 
   calcTicketTTC() {
@@ -557,32 +540,13 @@ class LSSApp {
     this.renderCurrentView();
   }
 
-  // 3. POS SALES & INVENTORY
+  // 3. POS & INVENTORY
   renderPOSProducts() {
     const grid = document.getElementById('pos-products-grid');
+    if (!grid) return;
     grid.innerHTML = '';
-    this.db.inventory.forEach(p => {
-      const priceTTC = Math.round(p.sellPriceHT * 1.18);
-      grid.innerHTML += `
-        <div class="product-card" onclick="app.addToCart('${p.id}')">
-          <div>
-            <div class="product-name">${p.name}</div>
-            <div class="product-category">${p.category} — Stock: ${p.stockQty}</div>
-          </div>
-          <div class="product-price">${this.formatFCFA(priceTTC)} TTC</div>
-        </div>
-      `;
-    });
-    this.renderCart();
-  }
-
-  filterProducts(query) {
-    const q = query.toLowerCase();
-    const grid = document.getElementById('pos-products-grid');
-    grid.innerHTML = '';
-    this.db.inventory
-      .filter(p => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q))
-      .forEach(p => {
+    if (this.db && Array.isArray(this.db.inventory)) {
+      this.db.inventory.forEach(p => {
         const priceTTC = Math.round(p.sellPriceHT * 1.18);
         grid.innerHTML += `
           <div class="product-card" onclick="app.addToCart('${p.id}')">
@@ -594,6 +558,31 @@ class LSSApp {
           </div>
         `;
       });
+    }
+    this.renderCart();
+  }
+
+  filterProducts(query) {
+    const q = query.toLowerCase();
+    const grid = document.getElementById('pos-products-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    if (this.db && Array.isArray(this.db.inventory)) {
+      this.db.inventory
+        .filter(p => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q))
+        .forEach(p => {
+          const priceTTC = Math.round(p.sellPriceHT * 1.18);
+          grid.innerHTML += `
+            <div class="product-card" onclick="app.addToCart('${p.id}')">
+              <div>
+                <div class="product-name">${p.name}</div>
+                <div class="product-category">${p.category} — Stock: ${p.stockQty}</div>
+              </div>
+              <div class="product-price">${this.formatFCFA(priceTTC)} TTC</div>
+            </div>
+          `;
+        });
+    }
   }
 
   addToCart(productId) {
@@ -617,11 +606,12 @@ class LSSApp {
 
   renderCart() {
     const container = document.getElementById('cart-items-container');
+    if (!container) return;
     if (this.posCart.length === 0) {
       container.innerHTML = '<p style="text-align: center; color: var(--text-muted); margin-top: 40px;">Aucun article dans le panier</p>';
-      document.getElementById('cart-subtotal-ht').innerText = '0 FCFA';
-      document.getElementById('cart-vat-amount').innerText = '0 FCFA';
-      document.getElementById('cart-total-ttc').innerText = '0 FCFA';
+      this.setText('cart-subtotal-ht', '0 FCFA');
+      this.setText('cart-vat-amount', '0 FCFA');
+      this.setText('cart-total-ttc', '0 FCFA');
       return;
     }
 
@@ -649,9 +639,9 @@ class LSSApp {
     const vatAmount = applyVat ? Math.round(subtotalHT * 0.18) : 0;
     const totalTTC = subtotalHT + vatAmount;
 
-    document.getElementById('cart-subtotal-ht').innerText = this.formatFCFA(subtotalHT);
-    document.getElementById('cart-vat-amount').innerText = applyVat ? this.formatFCFA(vatAmount) : '0 FCFA (Exonéré)';
-    document.getElementById('cart-total-ttc').innerText = this.formatFCFA(totalTTC);
+    this.setText('cart-subtotal-ht', this.formatFCFA(subtotalHT));
+    this.setText('cart-vat-amount', applyVat ? this.formatFCFA(vatAmount) : '0 FCFA (Exonéré)');
+    this.setText('cart-total-ttc', this.formatFCFA(totalTTC));
   }
 
   removeFromCart(index) {
@@ -668,7 +658,6 @@ class LSSApp {
     let subtotalHT = 0;
     this.posCart.forEach(item => {
       subtotalHT += item.priceHT * item.qty;
-      // Reduce Stock Qty
       const p = this.db.inventory.find(inv => inv.id === item.id);
       if (p) p.stockQty -= item.qty;
     });
@@ -680,7 +669,7 @@ class LSSApp {
     const newInvoice = {
       id: invoiceId,
       docType: 'facture',
-      clientName: document.getElementById('pos-client-name').value || 'Client Comptant',
+      clientName: document.getElementById('pos-client-name')?.value || 'Client Comptant',
       clientIfu: '',
       clientPhone: '',
       items: this.posCart.map(c => ({ desc: c.name, qty: c.qty, priceHT: c.priceHT })),
@@ -694,10 +683,8 @@ class LSSApp {
     this.db.invoices.unshift(newInvoice);
     this.saveDatabase();
     
-    // Print Official A4 Invoice
     this.printInvoiceA4(invoiceId);
 
-    // Reset Cart
     this.posCart = [];
     this.renderCart();
     this.renderPOSProducts();
@@ -724,20 +711,23 @@ class LSSApp {
   // 4. PROJECTS
   renderProjects() {
     const tbody = document.getElementById('projects-tbody');
+    if (!tbody) return;
     tbody.innerHTML = '';
-    this.db.projects.forEach(p => {
-      tbody.innerHTML += `
-        <tr>
-          <td><strong>${p.id}</strong></td>
-          <td>${p.title}</td>
-          <td>${p.clientName}</td>
-          <td>${p.category}</td>
-          <td><strong>${this.formatFCFA(p.budgetTTC)}</strong></td>
-          <td><span class="badge ${this.getBadgeClass(p.status)}">${p.status}</span></td>
-          <td><button class="btn btn-secondary btn-sm" onclick="alert('Détails du contrat enregistré.')">Fiche</button></td>
-        </tr>
-      `;
-    });
+    if (this.db && Array.isArray(this.db.projects)) {
+      this.db.projects.forEach(p => {
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${p.id}</strong></td>
+            <td>${p.title}</td>
+            <td>${p.clientName}</td>
+            <td>${p.category}</td>
+            <td><strong>${this.formatFCFA(p.budgetTTC)}</strong></td>
+            <td><span class="badge ${this.getBadgeClass(p.status)}">${p.status}</span></td>
+            <td><button class="btn btn-secondary btn-sm" onclick="alert('Détails du contrat enregistré.')">Fiche</button></td>
+          </tr>
+        `;
+      });
+    }
   }
 
   saveProject(e) {
@@ -759,29 +749,32 @@ class LSSApp {
   // 5. ACADEMY / STUDENTS
   renderStudents() {
     const tbody = document.getElementById('students-tbody');
+    if (!tbody) return;
     tbody.innerHTML = '';
-    this.db.students.forEach(s => {
-      tbody.innerHTML += `
-        <tr>
-          <td><strong>${s.id}</strong></td>
-          <td>${s.fullName}<br><small style="color: var(--text-muted);">${s.phone}</small></td>
-          <td>${s.track}</td>
-          <td>${s.startDate} au ${s.endDate}</td>
-          <td>ZABRE S. Constantin</td>
-          <td><span class="badge badge-success">${s.status}</span></td>
-          <td>
-            <div style="display: flex; gap: 6px;">
-              <button class="btn btn-secondary btn-sm" onclick="app.editStudent('${s.id}')">
-                <i data-lucide="edit-3"></i> Modifier
-              </button>
-              <button class="btn btn-primary btn-sm" onclick="app.openCertModal('${s.id}')">
-                <i data-lucide="award"></i> Aperçu & Éditeur A4
-              </button>
-            </div>
-          </td>
-        </tr>
-      `;
-    });
+    if (this.db && Array.isArray(this.db.students)) {
+      this.db.students.forEach(s => {
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${s.id}</strong></td>
+            <td>${s.fullName}<br><small style="color: var(--text-muted);">${s.phone}</small></td>
+            <td>${s.track}</td>
+            <td>${s.startDate} au ${s.endDate}</td>
+            <td>ZABRE S. Constantin</td>
+            <td><span class="badge badge-success">${s.status}</span></td>
+            <td>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn btn-secondary btn-sm" onclick="app.editStudent('${s.id}')">
+                  <i data-lucide="edit-3"></i> Modifier
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="app.openCertModal('${s.id}')">
+                  <i data-lucide="award"></i> Aperçu & Éditeur A4
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+    }
   }
 
   getDefaultSkillsForTrack(track) {
@@ -813,15 +806,15 @@ class LSSApp {
   editStudent(studentId) {
     const s = this.db.students.find(st => st.id === studentId);
     if (!s) return;
-    document.getElementById('stg-id').value = s.id;
-    document.getElementById('stg-name').value = s.fullName;
-    document.getElementById('stg-phone').value = s.phone || '';
-    document.getElementById('stg-track').value = s.track;
-    document.getElementById('stg-start').value = s.startDate;
-    document.getElementById('stg-end').value = s.endDate;
+    this.setVal('stg-id', s.id);
+    this.setVal('stg-name', s.fullName);
+    this.setVal('stg-phone', s.phone || '');
+    this.setVal('stg-track', s.track);
+    this.setVal('stg-start', s.startDate);
+    this.setVal('stg-end', s.endDate);
     
     const skillsList = s.skills && s.skills.length > 0 ? s.skills : this.getDefaultSkillsForTrack(s.track);
-    document.getElementById('stg-skills').value = skillsList.join('\n');
+    this.setVal('stg-skills', skillsList.join('\n'));
 
     this.openModal('modal-student');
     if (window.lucide) window.lucide.createIcons();
@@ -859,7 +852,7 @@ class LSSApp {
       this.db.students.unshift(newStg);
     }
 
-    document.getElementById('stg-id').value = '';
+    this.setVal('stg-id', '');
     this.saveDatabase();
     this.closeModal('modal-student');
     this.renderStudents();
@@ -872,36 +865,33 @@ class LSSApp {
     this.currentCertStudent = s;
     const settings = this.db.settings;
 
-    document.getElementById('ce-ifu').innerText = settings.ifu || '00320159Z';
-    document.getElementById('ce-rccm').innerText = settings.rccm || 'BF-OUA-01-2026-A10-13450';
-    document.getElementById('ce-phone').innerText = `Tél : ${settings.phone || '(+226) 70 00 00 00'}`;
+    this.setText('ce-ifu', settings.ifu || '00320159Z');
+    this.setText('ce-rccm', settings.rccm || 'BF-OUA-01-2026-A10-13450');
+    this.setText('ce-phone', `Tél : ${settings.phone || '(+226) 70 00 00 00'}`);
     const emailEl = document.getElementById('ce-email');
     if (emailEl) {
       emailEl.innerText = settings.email || 'contactlivingstoneservice@gmail.com';
       emailEl.href = `mailto:${settings.email || 'contactlivingstoneservice@gmail.com'}`;
     }
-    document.getElementById('ce-cert-number').innerText = s.certNumber || `N° ${s.id}/LSS`;
-    document.getElementById('ce-student-name').innerText = s.fullName.toUpperCase();
-    document.getElementById('ce-track-name').innerText = s.track.toUpperCase();
-    document.getElementById('ce-start-date').innerText = s.startDate;
-    document.getElementById('ce-end-date').innerText = s.endDate;
-    document.getElementById('ce-promoter-name').innerText = settings.promoterName || 'ZABRE S. Constantin';
-    const mottoEl = document.getElementById('ce-motto');
-    if (mottoEl) mottoEl.innerText = settings.motto || "L'Excellence & la Qualité au Service de l'Innovation IT";
+    this.setText('ce-cert-number', s.certNumber || `N° ${s.id}/LSS`);
+    this.setText('ce-student-name', s.fullName.toUpperCase());
+    this.setText('ce-track-name', s.track.toUpperCase());
+    this.setText('ce-start-date', s.startDate);
+    this.setText('ce-end-date', s.endDate);
+    this.setText('ce-promoter-name', settings.promoterName || 'ZABRE S. Constantin');
+    this.setText('ce-motto', settings.motto || "L'Excellence & la Qualité au Service de l'Innovation IT");
 
-    // Populate skills list
     const skills = s.skills && s.skills.length > 0 ? s.skills : this.getDefaultSkillsForTrack(s.track);
-    document.getElementById('ce-skills-list').innerHTML = skills.map(sk => `<li>${sk.replace(/^[•\-\*]\s*/, '')}</li>`).join('');
+    this.setHTML('ce-skills-list', skills.map(sk => `<li>${sk.replace(/^[•\-\*]\s*/, '')}</li>`).join(''));
 
-    // Format current date
     const today = new Date();
     const formattedDate = s.issueDate || `${today.getDate()} ${today.toLocaleDateString('fr-FR', { month: 'long' })} ${today.getFullYear()}`;
-    document.getElementById('ce-issue-date').innerText = formattedDate;
+    this.setText('ce-issue-date', formattedDate);
 
-    // Set WhatsApp link
     const waMsg = encodeURIComponent(`Bonjour ${s.fullName}, Living Stone Service vous informe que votre Attestation de Fin de Stage Pratique (${s.track}) N° ${s.id}/LSS est disponible!`);
     const waPhone = (s.phone || '').replace(/[^0-9]/g, '');
-    document.getElementById('cert-wa-link').href = `https://wa.me/${waPhone}?text=${waMsg}`;
+    const waBtn = document.getElementById('cert-wa-link');
+    if (waBtn) waBtn.href = `https://wa.me/${waPhone}?text=${waMsg}`;
 
     this.isCertEditing = false;
     this.applyCertEditState();
@@ -912,7 +902,6 @@ class LSSApp {
 
   toggleCertEdit() {
     if (this.isCertEditing) {
-      // User clicked "Valider & Enregistrer": Save edits back to student object & DB!
       this.saveCertCanvasEdits();
     }
     this.isCertEditing = !this.isCertEditing;
@@ -923,14 +912,19 @@ class LSSApp {
     if (!this.currentCertStudent) return;
     const s = this.currentCertStudent;
 
-    s.fullName = document.getElementById('ce-student-name').innerText.trim();
-    s.track = document.getElementById('ce-track-name').innerText.trim();
-    s.startDate = document.getElementById('ce-start-date').innerText.trim();
-    s.endDate = document.getElementById('ce-end-date').innerText.trim();
-    s.issueDate = document.getElementById('ce-issue-date').innerText.trim();
-    s.certNumber = document.getElementById('ce-cert-number').innerText.trim();
+    const nameEl = document.getElementById('ce-student-name');
+    if (nameEl) s.fullName = nameEl.innerText.trim();
+    const trackEl = document.getElementById('ce-track-name');
+    if (trackEl) s.track = trackEl.innerText.trim();
+    const startEl = document.getElementById('ce-start-date');
+    if (startEl) s.startDate = startEl.innerText.trim();
+    const endEl = document.getElementById('ce-end-date');
+    if (endEl) s.endDate = endEl.innerText.trim();
+    const issueEl = document.getElementById('ce-issue-date');
+    if (issueEl) s.issueDate = issueEl.innerText.trim();
+    const numEl = document.getElementById('ce-cert-number');
+    if (numEl) s.certNumber = numEl.innerText.trim();
 
-    // Extract skills array from LI elements
     const liElements = document.querySelectorAll('#ce-skills-list li');
     const skillsArray = [];
     liElements.forEach(li => {
@@ -955,14 +949,16 @@ class LSSApp {
     const container = document.getElementById('cert-editor-container');
     const btn = document.getElementById('btn-toggle-cert-edit');
 
-    if (this.isCertEditing) {
-      container.classList.add('cert-editing-active');
-      btn.className = 'btn btn-success btn-sm';
-      btn.innerHTML = '<i data-lucide="check"></i> Valider & Enregistrer';
-    } else {
-      container.classList.remove('cert-editing-active');
-      btn.className = 'btn btn-warning btn-sm';
-      btn.innerHTML = '<i data-lucide="edit-3"></i> Modifier le Texte';
+    if (container && btn) {
+      if (this.isCertEditing) {
+        container.classList.add('cert-editing-active');
+        btn.className = 'btn btn-success btn-sm';
+        btn.innerHTML = '<i data-lucide="check"></i> Valider & Enregistrer';
+      } else {
+        container.classList.remove('cert-editing-active');
+        btn.className = 'btn btn-warning btn-sm';
+        btn.innerHTML = '<i data-lucide="edit-3"></i> Modifier le Texte';
+      }
     }
 
     if (window.lucide) window.lucide.createIcons();
@@ -974,13 +970,15 @@ class LSSApp {
       this.isCertEditing = false;
       this.applyCertEditState();
     }
-    const certHtml = document.getElementById('cert-preview-content').outerHTML;
+    const certEl = document.getElementById('cert-preview-content');
+    if (!certEl) return;
+    const certHtml = certEl.outerHTML;
     const printArea = document.getElementById('print-area');
+    if (!printArea) return;
     printArea.innerHTML = certHtml;
     printArea.classList.add('print-landscape-mode');
     document.body.classList.add('print-landscape-mode');
 
-    // Inject dynamic @page landscape rule so browser print dialog automatically defaults to Landscape A4
     let styleEl = document.getElementById('print-page-style');
     if (!styleEl) {
       styleEl = document.createElement('style');
@@ -1001,46 +999,49 @@ class LSSApp {
     setTimeout(cleanup, 1000);
   }
 
-
-  // 6. INVOICES & ESTIMATES (DGI BURKINA FASO)
+  // 6. INVOICES & ESTIMATES
   renderInvoices() {
     const tbody = document.getElementById('invoices-tbody');
+    if (!tbody) return;
     tbody.innerHTML = '';
-    this.db.invoices.forEach(inv => {
-      const isFacture = inv.docType === 'facture';
-      const typeBadge = isFacture ? 'badge-info' : 'badge-warning';
-      const waMsg = encodeURIComponent(`Bonjour ${inv.clientName}, voici votre ${inv.docType} N° ${inv.id} de LIVING STONE SERVICE. Montant TTC: ${inv.totalTTC} FCFA.`);
-      const waLink = `https://wa.me/${(inv.clientPhone || '').replace(/[^0-9]/g, '')}?text=${waMsg}`;
+    if (this.db && Array.isArray(this.db.invoices)) {
+      this.db.invoices.forEach(inv => {
+        const isFacture = inv.docType === 'facture';
+        const typeBadge = isFacture ? 'badge-info' : 'badge-warning';
+        const waMsg = encodeURIComponent(`Bonjour ${inv.clientName}, voici votre ${inv.docType} N° ${inv.id} de LIVING STONE SERVICE. Montant TTC: ${inv.totalTTC} FCFA.`);
+        const waLink = `https://wa.me/${(inv.clientPhone || '').replace(/[^0-9]/g, '')}?text=${waMsg}`;
 
-      tbody.innerHTML += `
-        <tr>
-          <td><strong>${inv.id}</strong></td>
-          <td><span class="badge ${typeBadge}">${inv.docType.toUpperCase()}</span></td>
-          <td>${inv.clientName}<br><small style="color: var(--text-muted);">IFU: ${inv.clientIfu || 'N/A'}</small></td>
-          <td>${this.formatFCFA(inv.subtotalHT)}</td>
-          <td>${this.formatFCFA(inv.vatAmount)}</td>
-          <td><strong>${this.formatFCFA(inv.totalTTC)}</strong></td>
-          <td><span class="badge badge-success">${inv.paymentStatus || 'Payé'}</span></td>
-          <td>
-            <div style="display: flex; gap: 6px;">
-              <button class="btn btn-secondary btn-sm" onclick="app.editInvoice('${inv.id}')">
-                <i data-lucide="edit-3"></i> Modifier
-              </button>
-              <button class="btn btn-primary btn-sm" onclick="app.printInvoiceA4('${inv.id}')">
-                <i data-lucide="printer"></i> A4
-              </button>
-              <a href="${waLink}" target="_blank" class="btn btn-success btn-sm">
-                <i data-lucide="send"></i> WA
-              </a>
-            </div>
-          </td>
-        </tr>
-      `;
-    });
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${inv.id}</strong></td>
+            <td><span class="badge ${typeBadge}">${inv.docType.toUpperCase()}</span></td>
+            <td>${inv.clientName}<br><small style="color: var(--text-muted);">IFU: ${inv.clientIfu || 'N/A'}</small></td>
+            <td>${this.formatFCFA(inv.subtotalHT)}</td>
+            <td>${this.formatFCFA(inv.vatAmount)}</td>
+            <td><strong>${this.formatFCFA(inv.totalTTC)}</strong></td>
+            <td><span class="badge badge-success">${inv.paymentStatus || 'Payé'}</span></td>
+            <td>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn btn-secondary btn-sm" onclick="app.editInvoice('${inv.id}')">
+                  <i data-lucide="edit-3"></i> Modifier
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="app.printInvoiceA4('${inv.id}')">
+                  <i data-lucide="printer"></i> A4
+                </button>
+                <a href="${waLink}" target="_blank" class="btn btn-success btn-sm">
+                  <i data-lucide="send"></i> WA
+                </a>
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+    }
   }
 
   addInvoiceRow() {
     const wrapper = document.getElementById('inv-items-wrapper');
+    if (!wrapper) return;
     const div = document.createElement('div');
     div.className = 'form-grid inv-item-row';
     div.style.marginBottom = '8px';
@@ -1056,31 +1057,31 @@ class LSSApp {
     const inv = this.db.invoices.find(i => i.id === invoiceId);
     if (!inv) return;
 
-    document.getElementById('inv-form-id').value = inv.id;
-    document.getElementById('inv-doc-type').value = inv.docType;
-    document.getElementById('inv-client-name').value = inv.clientName;
-    document.getElementById('inv-client-ifu').value = inv.clientIfu || '';
-    document.getElementById('inv-client-phone').value = inv.clientPhone || '';
+    this.setVal('inv-form-id', inv.id);
+    this.setVal('inv-doc-type', inv.docType);
+    this.setVal('inv-client-name', inv.clientName);
+    this.setVal('inv-client-ifu', inv.clientIfu || '');
+    this.setVal('inv-client-phone', inv.clientPhone || '');
     if (document.getElementById('inv-apply-vat')) {
       document.getElementById('inv-apply-vat').value = inv.applyVat !== false ? 'true' : 'false';
     }
 
-    // Populate item rows
     const wrapper = document.getElementById('inv-items-wrapper');
-    wrapper.innerHTML = '';
-
-    const items = inv.items && inv.items.length > 0 ? inv.items : [{ desc: '', qty: 1, priceHT: 0 }];
-    items.forEach(item => {
-      const div = document.createElement('div');
-      div.className = 'form-grid inv-item-row';
-      div.style.marginBottom = '8px';
-      div.innerHTML = `
-        <input type="text" class="form-control item-desc" placeholder="Description prestation / article" style="grid-column: span 2;" value="${item.desc || ''}" required>
-        <input type="number" class="form-control item-qty" placeholder="Qté" value="${item.qty || 1}" min="1" required>
-        <input type="number" class="form-control item-price" placeholder="Prix HT (FCFA)" value="${item.priceHT || 0}" required>
-      `;
-      wrapper.appendChild(div);
-    });
+    if (wrapper) {
+      wrapper.innerHTML = '';
+      const items = inv.items && inv.items.length > 0 ? inv.items : [{ desc: '', qty: 1, priceHT: 0 }];
+      items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'form-grid inv-item-row';
+        div.style.marginBottom = '8px';
+        div.innerHTML = `
+          <input type="text" class="form-control item-desc" placeholder="Description prestation / article" style="grid-column: span 2;" value="${item.desc || ''}" required>
+          <input type="number" class="form-control item-qty" placeholder="Qté" value="${item.qty || 1}" min="1" required>
+          <input type="number" class="form-control item-price" placeholder="Prix HT (FCFA)" value="${item.priceHT || 0}" required>
+        `;
+        wrapper.appendChild(div);
+      });
+    }
 
     this.openModal('modal-invoice');
     if (window.lucide) window.lucide.createIcons();
@@ -1088,8 +1089,8 @@ class LSSApp {
 
   saveInvoice(e) {
     e.preventDefault();
-    const invId = document.getElementById('inv-form-id').value;
-    const docType = document.getElementById('inv-doc-type').value;
+    const invId = document.getElementById('inv-form-id')?.value;
+    const docType = document.getElementById('inv-doc-type')?.value || 'facture';
     const applyVat = document.getElementById('inv-apply-vat') ? document.getElementById('inv-apply-vat').value === 'true' : true;
     
     const rows = document.querySelectorAll('.inv-item-row');
@@ -1097,9 +1098,9 @@ class LSSApp {
     let subtotalHT = 0;
 
     rows.forEach(r => {
-      const desc = r.querySelector('.item-desc').value;
-      const qty = Number(r.querySelector('.item-qty').value || 1);
-      const priceHT = Number(r.querySelector('.item-price').value || 0);
+      const desc = r.querySelector('.item-desc')?.value || '';
+      const qty = Number(r.querySelector('.item-qty')?.value || 1);
+      const priceHT = Number(r.querySelector('.item-price')?.value || 0);
       subtotalHT += qty * priceHT;
       items.push({ desc, qty, priceHT });
     });
@@ -1111,9 +1112,9 @@ class LSSApp {
       const inv = this.db.invoices.find(i => i.id === invId);
       if (inv) {
         inv.docType = docType;
-        inv.clientName = document.getElementById('inv-client-name').value;
-        inv.clientIfu = document.getElementById('inv-client-ifu').value;
-        inv.clientPhone = document.getElementById('inv-client-phone').value;
+        inv.clientName = document.getElementById('inv-client-name')?.value || '';
+        inv.clientIfu = document.getElementById('inv-client-ifu')?.value || '';
+        inv.clientPhone = document.getElementById('inv-client-phone')?.value || '';
         inv.applyVat = applyVat;
         inv.items = items;
         inv.subtotalHT = subtotalHT;
@@ -1125,9 +1126,9 @@ class LSSApp {
       const newInv = {
         id: this.getNextID('invoices', prefix),
         docType: docType,
-        clientName: document.getElementById('inv-client-name').value,
-        clientIfu: document.getElementById('inv-client-ifu').value,
-        clientPhone: document.getElementById('inv-client-phone').value,
+        clientName: document.getElementById('inv-client-name')?.value || '',
+        clientIfu: document.getElementById('inv-client-ifu')?.value || '',
+        clientPhone: document.getElementById('inv-client-phone')?.value || '',
         applyVat: applyVat,
         items: items,
         subtotalHT: subtotalHT,
@@ -1139,7 +1140,7 @@ class LSSApp {
       this.db.invoices.unshift(newInv);
     }
 
-    document.getElementById('inv-form-id').value = '';
+    this.setVal('inv-form-id', '');
     this.saveDatabase();
     this.closeModal('modal-invoice');
     this.renderInvoices();
@@ -1148,19 +1149,22 @@ class LSSApp {
   // 7. EXPENSES
   renderExpenses() {
     const tbody = document.getElementById('expenses-tbody');
+    if (!tbody) return;
     tbody.innerHTML = '';
-    this.db.expenses.forEach(e => {
-      tbody.innerHTML += `
-        <tr>
-          <td><strong>${e.id}</strong></td>
-          <td>${e.date}</td>
-          <td><span class="badge badge-purple">${e.category}</span></td>
-          <td>${e.description}</td>
-          <td><strong style="color: var(--accent-danger);">${this.formatFCFA(e.amount)}</strong></td>
-          <td>${e.paymentMethod}</td>
-        </tr>
-      `;
-    });
+    if (this.db && Array.isArray(this.db.expenses)) {
+      this.db.expenses.forEach(e => {
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${e.id}</strong></td>
+            <td>${e.date}</td>
+            <td><span class="badge badge-purple">${e.category}</span></td>
+            <td>${e.description}</td>
+            <td><strong style="color: var(--accent-danger);">${this.formatFCFA(e.amount)}</strong></td>
+            <td>${e.paymentMethod}</td>
+          </tr>
+        `;
+      });
+    }
   }
 
   saveExpense(e) {
@@ -1179,67 +1183,73 @@ class LSSApp {
     this.renderExpenses();
   }
 
-  // 8. FINANCIAL REPORTS & DGI BILAN
+  // 8. FINANCIAL REPORTS
   renderFinancialReport() {
     let totalCA = 0;
     let totalHT = 0;
     let totalTVA = 0;
 
-    this.db.invoices.forEach(inv => {
-      totalCA += Number(inv.totalTTC || 0);
-      totalHT += Number(inv.subtotalHT || 0);
-      totalTVA += Number(inv.vatAmount || 0);
-    });
+    if (this.db && Array.isArray(this.db.invoices)) {
+      this.db.invoices.forEach(inv => {
+        totalCA += Number(inv.totalTTC || 0);
+        totalHT += Number(inv.subtotalHT || 0);
+        totalTVA += Number(inv.vatAmount || 0);
+      });
+    }
 
-    let totalExp = this.db.expenses.reduce((a, b) => a + Number(b.amount || 0), 0);
+    let totalExp = (this.db && Array.isArray(this.db.expenses)) ? this.db.expenses.reduce((a, b) => a + Number(b.amount || 0), 0) : 0;
     let netProfit = totalHT - totalExp;
 
-    document.getElementById('report-total-ca').innerText = this.formatFCFA(totalCA);
-    document.getElementById('report-ca-ht').innerText = this.formatFCFA(totalHT);
-    document.getElementById('report-ca-tva').innerText = this.formatFCFA(totalTVA);
-    document.getElementById('report-total-dep').innerText = this.formatFCFA(totalExp);
-    document.getElementById('report-net-profit').innerText = this.formatFCFA(netProfit);
+    this.setText('report-total-ca', this.formatFCFA(totalCA));
+    this.setText('report-ca-ht', this.formatFCFA(totalHT));
+    this.setText('report-ca-tva', this.formatFCFA(totalTVA));
+    this.setText('report-total-dep', this.formatFCFA(totalExp));
+    this.setText('report-net-profit', this.formatFCFA(netProfit));
 
-    // SVG Chart
     const maxVal = Math.max(totalCA, totalExp, 1);
     const caHeight = Math.round((totalCA / maxVal) * 140);
     const expHeight = Math.round((totalExp / maxVal) * 140);
 
     const chartBox = document.getElementById('chart-container');
-    chartBox.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-        <span style="font-size: 11px; font-weight: 700; color: var(--accent-success);">${this.formatFCFA(totalCA)}</span>
-        <div style="width: 50px; height: ${caHeight}px; background: linear-gradient(to top, var(--accent-success), #34d399); border-radius: 6px 6px 0 0;"></div>
-        <span style="font-size: 12px; font-weight: 600;">Recettes TTC</span>
-      </div>
-      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-        <span style="font-size: 11px; font-weight: 700; color: var(--accent-danger);">${this.formatFCFA(totalExp)}</span>
-        <div style="width: 50px; height: ${expHeight}px; background: linear-gradient(to top, var(--accent-danger), #f87171); border-radius: 6px 6px 0 0;"></div>
-        <span style="font-size: 12px; font-weight: 600;">Dépenses</span>
-      </div>
-    `;
+    if (chartBox) {
+      chartBox.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+          <span style="font-size: 11px; font-weight: 700; color: var(--accent-success);">${this.formatFCFA(totalCA)}</span>
+          <div style="width: 50px; height: ${caHeight}px; background: linear-gradient(to top, var(--accent-success), #34d399); border-radius: 6px 6px 0 0;"></div>
+          <span style="font-size: 12px; font-weight: 600;">Recettes TTC</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+          <span style="font-size: 11px; font-weight: 700; color: var(--accent-danger);">${this.formatFCFA(totalExp)}</span>
+          <div style="width: 50px; height: ${expHeight}px; background: linear-gradient(to top, var(--accent-danger), #f87171); border-radius: 6px 6px 0 0;"></div>
+          <span style="font-size: 12px; font-weight: 600;">Dépenses</span>
+        </div>
+      `;
+    }
   }
 
-  // 9. CLIENTS CRM
+  // 9. CLIENTS
   renderClients() {
     const tbody = document.getElementById('clients-tbody');
+    if (!tbody) return;
     tbody.innerHTML = '';
-    this.db.clients.forEach(c => {
-      const waLink = `https://wa.me/${c.phone.replace(/[^0-9]/g, '')}`;
-      tbody.innerHTML += `
-        <tr>
-          <td><strong>${c.id}</strong></td>
-          <td>${c.name}</td>
-          <td><span class="badge ${c.type === 'Entreprise' ? 'badge-info' : 'badge-purple'}">${c.type}</span></td>
-          <td>${c.phone}</td>
-          <td>${c.ifu || 'N/A'}</td>
-          <td>${c.address || 'Ouagadougou'}</td>
-          <td>
-            <a href="${waLink}" target="_blank" class="btn btn-success btn-sm"><i data-lucide="message-square"></i> WhatsApp</a>
-          </td>
-        </tr>
-      `;
-    });
+    if (this.db && Array.isArray(this.db.clients)) {
+      this.db.clients.forEach(c => {
+        const waLink = `https://wa.me/${(c.phone || '').replace(/[^0-9]/g, '')}`;
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${c.id}</strong></td>
+            <td>${c.name}</td>
+            <td><span class="badge ${c.type === 'Entreprise' ? 'badge-info' : 'badge-purple'}">${c.type}</span></td>
+            <td>${c.phone || ''}</td>
+            <td>${c.ifu || 'N/A'}</td>
+            <td>${c.address || 'Ouagadougou'}</td>
+            <td>
+              <a href="${waLink}" target="_blank" class="btn btn-success btn-sm"><i data-lucide="message-square"></i> WhatsApp</a>
+            </td>
+          </tr>
+        `;
+      });
+    }
   }
 
   saveClient(e) {
@@ -1259,7 +1269,7 @@ class LSSApp {
     this.renderClients();
   }
 
-  // 10. SETTINGS & DB MANAGEMENT
+  // 10. SETTINGS
   loadSettingsForm() {
     const s = this.db.settings;
     if (!s.counters) s.counters = { tickets: 0, invoices: 0, students: 0, expenses: 0 };
@@ -1292,22 +1302,22 @@ class LSSApp {
 
   saveSettings(e) {
     e.preventDefault();
-    this.db.settings.companyName = document.getElementById('set-company-name').value;
-    this.db.settings.promoterName = document.getElementById('set-promoter-name').value;
-    this.db.settings.phone = document.getElementById('set-phone').value;
-    this.db.settings.email = document.getElementById('set-email').value;
-    this.db.settings.motto = document.getElementById('set-motto').value;
-    this.db.settings.poBox = document.getElementById('set-po-box').value;
-    this.db.settings.ifu = document.getElementById('set-ifu').value;
-    this.db.settings.ifuDate = document.getElementById('set-ifu-date').value;
-    this.db.settings.rccm = document.getElementById('set-rccm').value;
-    this.db.settings.rccmDate = document.getElementById('set-rccm-date').value;
-    this.db.settings.adminPin = document.getElementById('set-admin-pin').value;
+    this.db.settings.companyName = document.getElementById('set-company-name')?.value || '';
+    this.db.settings.promoterName = document.getElementById('set-promoter-name')?.value || '';
+    this.db.settings.phone = document.getElementById('set-phone')?.value || '';
+    this.db.settings.email = document.getElementById('set-email')?.value || '';
+    this.db.settings.motto = document.getElementById('set-motto')?.value || '';
+    this.db.settings.poBox = document.getElementById('set-po-box')?.value || '';
+    this.db.settings.ifu = document.getElementById('set-ifu')?.value || '';
+    this.db.settings.ifuDate = document.getElementById('set-ifu-date')?.value || '';
+    this.db.settings.rccm = document.getElementById('set-rccm')?.value || '';
+    this.db.settings.rccmDate = document.getElementById('set-rccm-date')?.value || '';
+    this.db.settings.adminPin = document.getElementById('set-admin-pin')?.value || '1234';
     if (document.getElementById('set-staff-pin')) {
-      this.db.settings.staffPin = document.getElementById('set-staff-pin').value;
+      this.db.settings.staffPin = document.getElementById('set-staff-pin').value || '5678';
     }
-    this.db.settings.supabaseUrl = document.getElementById('set-supabase-url').value;
-    this.db.settings.supabaseKey = document.getElementById('set-supabase-key').value;
+    this.db.settings.supabaseUrl = document.getElementById('set-supabase-url')?.value || '';
+    this.db.settings.supabaseKey = document.getElementById('set-supabase-key')?.value || '';
 
     if (!this.db.settings.counters) this.db.settings.counters = {};
     if (document.getElementById('cnt-ticket')) this.db.settings.counters.tickets = Number(document.getElementById('cnt-ticket').value || 0);
@@ -1357,7 +1367,6 @@ class LSSApp {
     this.db.settings.counters[type] = current;
     this.saveDatabase();
     
-    // Update settings UI if present
     const elemMap = { tickets: 'cnt-ticket', invoices: 'cnt-invoice', students: 'cnt-student', expenses: 'cnt-expense' };
     if (elemMap[type] && document.getElementById(elemMap[type])) {
       document.getElementById(elemMap[type]).value = current;
@@ -1442,7 +1451,6 @@ class LSSApp {
         updated_at: nowIso
       };
 
-      // 1. Try Upsert via POST with on_conflict=id
       let res = await fetch(`${supabaseUrl}/rest/v1/app_sync?on_conflict=id`, {
         method: 'POST',
         headers: {
@@ -1454,7 +1462,6 @@ class LSSApp {
         body: JSON.stringify(payload)
       });
 
-      // 2. Fallback to PATCH if row already exists or Prefer header variation
       if (!res.ok) {
         res = await fetch(`${supabaseUrl}/rest/v1/app_sync?id=eq.lss_main_db`, {
           method: 'PATCH',
@@ -1512,7 +1519,7 @@ class LSSApp {
     supabaseKey = supabaseKey || envKey;
 
     if (!supabaseUrl || !supabaseKey) {
-      if (isManual) alert('⚠️ Supabase non configuré.\n\nPour partager les données entre plusieurs appareils (PC & Android), veuillez renseigner l\'URL et la Clé API Supabase dans Paramètres sur CHACUN des appareils.');
+      if (isManual) alert('⚠️ Supabase non configuré.\n\nPour partager les données entre plusieurs appareils, veuillez renseigner l\'URL et la Clé API Supabase dans Paramètres sur CHACUN des appareils.');
       return;
     }
 
@@ -1536,7 +1543,6 @@ class LSSApp {
           const cloudDb = rows[0].data;
           const cloudUpdatedAt = rows[0].updated_at ? new Date(rows[0].updated_at).getTime() : 0;
 
-          // Avoid overwriting local changes if local state was updated more recently
           if (!isManual && this.lastLocalUpdate && cloudUpdatedAt && cloudUpdatedAt <= this.lastLocalUpdate) {
             const statusElem = document.getElementById('sync-status');
             if (statusElem) {
@@ -1547,7 +1553,6 @@ class LSSApp {
             return;
           }
 
-          // Do not re-render DOM during auto-polling if user has an active modal open
           const hasActiveModal = !!document.querySelector('.modal-overlay.active, .modal.active, [id$="-modal"][style*="flex"]');
           if (!isManual && hasActiveModal) {
             return;
@@ -1627,7 +1632,7 @@ class LSSApp {
   }
 
   // =========================================================================
-  // OFFICIAL A4 PRINTING ENGINE ENGINE (DGI & LSS COMPLIANCE)
+  // OFFICIAL A4 PRINTING ENGINE (DGI & LSS COMPLIANCE)
   // =========================================================================
 
   printTicketReceipt(ticketId) {
@@ -1637,7 +1642,6 @@ class LSSApp {
 
     const printHtml = `
       <div style="font-family: 'Plus Jakarta Sans', Arial, sans-serif; color: #0f172a;">
-        <!-- Top Header Grid (Conforme Attestation) -->
         <div class="cert-top-grid" style="border-bottom: 2px solid #109e2b; padding-bottom: 14px; margin-bottom: 20px;">
           <div class="cert-left-meta">
             <strong style="color: #0252df; font-size: 13px;">${s.companyName}</strong><br>
@@ -1657,7 +1661,6 @@ class LSSApp {
           </div>
         </div>
 
-        <!-- Title & Document Number Badge -->
         <h2 style="font-size: 18pt; font-weight: 900; color: #0252df; text-transform: uppercase; text-align: center; margin-bottom: 4px; letter-spacing: 0.5px;">
           REÇU DE DÉPÔT & DE MAINTENANCE IT
         </h2>
@@ -1665,7 +1668,6 @@ class LSSApp {
           Ticket N° ${t.id} — Date de Dépôt: ${t.dateReceived}
         </div>
 
-        <!-- Metadata Info Grid -->
         <div class="print-meta-grid" style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
           <div>
             <strong style="color: #0252df;">INFORMATIONS CLIENT:</strong><br>
@@ -1721,120 +1723,6 @@ class LSSApp {
           </div>
         </div>
 
-        <!-- Official Motto Footer -->
-        <div style="margin-top: 35px; padding-top: 10px; border-top: 1px dashed #cbd5e1; text-align: center; font-size: 8.5pt; color: #64748b;">
-          <div style="font-weight: 700; color: #0252df; font-style: italic; margin-bottom: 2px;">
-            « ${s.motto || "L'Excellence & la Qualité au Service de l'Innovation IT"} »
-          </div>
-          <div>
-            ${s.companyName} — IFU: ${s.ifu} — RCCM: ${s.rccm} — BP: ${s.poBox || '06 BV 30379 Ouaga Zogona 10020 OUAGADOUGOU'}
-          </div>
-        </div>
-      </div>
-    `;
-
-  preparePortraitPrint(printHtml) {
-    const printArea = document.getElementById('print-area');
-    printArea.classList.remove('print-landscape-mode');
-    document.body.classList.remove('print-landscape-mode');
-    const styleEl = document.getElementById('print-page-style');
-    if (styleEl) styleEl.innerHTML = '';
-    printArea.innerHTML = printHtml;
-    window.print();
-  }
-
-  printReceipt(ticketId) {
-    const t = this.db.tickets.find(tk => tk.id === ticketId);
-    if (!t) return;
-    const s = this.db.settings;
-
-    const printHtml = `
-      <div style="font-family: 'Plus Jakarta Sans', Arial, sans-serif; color: #0f172a; page-break-inside: avoid; break-inside: avoid;">
-        <!-- Top Header Grid (Conforme Attestation) -->
-        <div class="cert-top-grid" style="border-bottom: 2px solid #109e2b; padding-bottom: 10px; margin-bottom: 12px;">
-          <div class="cert-left-meta" style="font-size: 8.5pt;">
-            <strong style="color: #0252df; font-size: 11pt;">${s.companyName}</strong><br>
-            Entreprise Individuelle<br>
-            BP : ${s.poBox || '06 BV 30379 Ouaga Zogona 10020 OUAGADOUGOU'}<br>
-            N° IFU : ${s.ifu} (du ${s.ifuDate || '2026-07-20'})<br>
-            N° RCCM : ${s.rccm} (du ${s.rccmDate || '2026-07-17'})
-          </div>
-          <div class="cert-center-logo">
-            <img src="logo.png" alt="LSS Logo" style="height: 52px; width: auto;">
-          </div>
-          <div class="cert-right-meta" style="font-size: 8.5pt;">
-            <strong style="color: #109e2b; font-size: 11pt;">MAINTENANCE & FORMATIONS</strong><br>
-            Ouagadougou, Burkina Faso<br>
-            Tél : ${s.phone || '(+226) 70 00 00 00 / (+226) 76 00 00 00'}<br>
-            <a href="mailto:${s.email || 'contactlivingstoneservice@gmail.com'}" style="color: #0252df; text-decoration: none;">${s.email || 'contactlivingstoneservice@gmail.com'}</a>
-          </div>
-        </div>
-
-        <!-- Title & Document Number Badge -->
-        <h2 style="font-size: 18pt; font-weight: 900; color: #0252df; text-transform: uppercase; text-align: center; margin-bottom: 4px; letter-spacing: 0.5px;">
-          REÇU DE DÉPÔT & DE MAINTENANCE IT
-        </h2>
-        <div style="font-size: 12pt; font-weight: 800; color: #f37021; text-align: center; margin-bottom: 20px;">
-          Ticket N° ${t.id} — Date de Dépôt: ${t.dateReceived}
-        </div>
-
-        <!-- Metadata Info Grid -->
-        <div class="print-meta-grid" style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
-          <div>
-            <strong style="color: #0252df;">INFORMATIONS CLIENT:</strong><br>
-            Nom / Raison Sociale: <strong>${t.clientName}</strong><br>
-            Téléphone WhatsApp: ${t.clientPhone}
-          </div>
-          <div>
-            <strong style="color: #0252df;">DÉTAILS ÉQUIPEMENT DÉPOSÉ:</strong><br>
-            Modèle Appareil: <strong>${t.deviceModel}</strong><br>
-            N° Série: ${t.serialNumber || 'N/A'}<br>
-            Accessoires Déposés: ${t.accessories || 'Aucun'}
-          </div>
-        </div>
-
-        <div style="margin-bottom: 20px;">
-          <strong style="color: #0f172a;">DIAGNOSTIC INITIAL & PANNE SIGNALÉE:</strong>
-          <p style="background: #f1f5f9; border-left: 4px solid #f37021; padding: 12px; border-radius: 4px; font-size: 10.5pt; margin-top: 6px; color: #334155;">
-            ${t.problemDesc}
-          </p>
-        </div>
-
-        <table class="print-table">
-          <thead>
-            <tr>
-              <th style="background: #0252df; color: #ffffff; padding: 10px;">Désignation Prestation / Réparation</th>
-              <th style="background: #0252df; color: #ffffff; padding: 10px; text-align: right;">Montant HT</th>
-              <th style="background: #0252df; color: #ffffff; padding: 10px; text-align: right;">TVA (18%)</th>
-              <th style="background: #0252df; color: #ffffff; padding: 10px; text-align: right;">Total TTC</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Main d'œuvre, Diagnostic & Maintenance IT (Statut: <strong>${t.status}</strong>)</td>
-              <td style="text-align: right;">${this.formatFCFA(t.costHT)}</td>
-              <td style="text-align: right;">${this.formatFCFA(t.vat18)}</td>
-              <td style="text-align: right;"><strong>${this.formatFCFA(t.costTTC)}</strong></td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div class="print-totals" style="width: 300px; margin-left: auto; border: 1px solid #cbd5e1; padding: 14px; border-radius: 8px; margin-bottom: 30px;">
-          <div class="print-totals-row"><span>Sous-total HT:</span> <span>${this.formatFCFA(t.costHT)}</span></div>
-          <div class="print-totals-row"><span>TVA (18% CGI):</span> <span>${this.formatFCFA(t.vat18)}</span></div>
-          <div class="print-totals-row grand-total" style="color: #0252df; border-top: 2px solid #0252df;"><span>Net à Payer TTC:</span> <span>${this.formatFCFA(t.costTTC)}</span></div>
-        </div>
-
-        <div class="print-signatures" style="margin-top: 40px;">
-          <div class="print-signature-box">Signature du Client</div>
-          <div class="print-signature-box">
-            <strong>LE PROMOTEUR LSS</strong><br>
-            <span style="color: #0252df; font-weight: 800;">${s.promoterName}</span><br>
-            <small style="color: #64748b;">(Cachet & Signature Officiels)</small>
-          </div>
-        </div>
-
-        <!-- Official Motto Footer -->
         <div style="margin-top: 35px; padding-top: 10px; border-top: 1px dashed #cbd5e1; text-align: center; font-size: 8.5pt; color: #64748b;">
           <div style="font-weight: 700; color: #0252df; font-style: italic; margin-bottom: 2px;">
             « ${s.motto || "L'Excellence & la Qualité au Service de l'Innovation IT"} »
@@ -1847,6 +1735,21 @@ class LSSApp {
     `;
 
     this.preparePortraitPrint(printHtml);
+  }
+
+  preparePortraitPrint(printHtml) {
+    const printArea = document.getElementById('print-area');
+    if (!printArea) return;
+    printArea.classList.remove('print-landscape-mode');
+    document.body.classList.remove('print-landscape-mode');
+    const styleEl = document.getElementById('print-page-style');
+    if (styleEl) styleEl.innerHTML = '';
+    printArea.innerHTML = printHtml;
+    window.print();
+  }
+
+  printReceipt(ticketId) {
+    this.printTicketReceipt(ticketId);
   }
 
   printInvoiceA4(invoiceId) {
@@ -1869,7 +1772,6 @@ class LSSApp {
 
     const printHtml = `
       <div style="font-family: 'Plus Jakarta Sans', Arial, sans-serif; color: #0f172a; page-break-inside: avoid; break-inside: avoid;">
-        <!-- Top Header Grid (Conforme Attestation) -->
         <div class="cert-top-grid" style="border-bottom: 2px solid #109e2b; padding-bottom: 8px; margin-bottom: 10px;">
           <div class="cert-left-meta" style="font-size: 8.5pt;">
             <strong style="color: #0252df; font-size: 11pt;">${s.companyName}</strong><br>
@@ -1889,7 +1791,6 @@ class LSSApp {
           </div>
         </div>
 
-        <!-- Document Title & Badge -->
         <h2 style="font-size: 15pt; font-weight: 900; color: #0252df; text-transform: uppercase; text-align: center; margin-bottom: 2px; letter-spacing: 0.5px;">
           ${inv.docType.toUpperCase()} OFFICIELLE DGI
         </h2>
@@ -1945,7 +1846,6 @@ class LSSApp {
           </div>
         </div>
 
-        <!-- Official Motto Footer -->
         <div style="margin-top: 16px; padding-top: 6px; border-top: 1px dashed #cbd5e1; text-align: center; font-size: 8pt; color: #64748b;">
           <div style="font-weight: 700; color: #0252df; font-style: italic; margin-bottom: 2px;">
             « ${s.motto || "L'Excellence & la Qualité au Service de l'Innovation IT"} »
@@ -1984,7 +1884,6 @@ class LSSApp {
 
     const printHtml = `
       <div style="font-family: 'Plus Jakarta Sans', Arial, sans-serif; color: #0f172a;">
-        <!-- Top Header Grid (Conforme Attestation) -->
         <div class="cert-top-grid" style="border-bottom: 2px solid #109e2b; padding-bottom: 14px; margin-bottom: 20px;">
           <div class="cert-left-meta">
             <strong style="color: #0252df; font-size: 13px;">${s.companyName}</strong><br>
@@ -2051,7 +1950,6 @@ class LSSApp {
           </div>
         </div>
 
-        <!-- Official Motto Footer -->
         <div style="margin-top: 35px; padding-top: 10px; border-top: 1px dashed #cbd5e1; text-align: center; font-size: 8.5pt; color: #64748b;">
           <div style="font-weight: 700; color: #0252df; font-style: italic; margin-bottom: 2px;">
             « ${s.motto || "L'Excellence & la Qualité au Service de l'Innovation IT"} »
@@ -2098,11 +1996,9 @@ class LSSApp {
   }
 
   numberToWordsFCFA(amount) {
-    // Simple helper string representation for invoices
     return new Intl.NumberFormat('fr-FR').format(Math.round(amount || 0));
   }
 
-  // Modal Controls
   openModal(id) {
     const m = document.getElementById(id);
     if (m) m.classList.add('active');
@@ -2114,5 +2010,11 @@ class LSSApp {
   }
 }
 
-// Global App Instance
-window.app = new LSSApp();
+// Global App Instance (Resilient Initialization)
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    window.app = new LSSApp();
+  });
+} else {
+  window.app = new LSSApp();
+}
