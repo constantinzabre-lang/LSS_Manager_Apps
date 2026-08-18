@@ -1026,17 +1026,9 @@ class LSSApp {
             <td>ZABRE S. Constantin</td>
             <td><span class="badge badge-success">${s.status}</span></td>
             <td>
-              <div style="display: flex; gap: 6px;">
-                <button class="btn btn-secondary btn-sm" onclick="app.editStudent('${s.id}')">
-                  <i data-lucide="edit-3"></i> Modifier
-                </button>
-                <button class="btn btn-success btn-sm" onclick="app.printStudentCertificate('${s.id}')">
-                  <i data-lucide="printer"></i> Imprimer A4
-                </button>
-                <button class="btn btn-primary btn-sm" onclick="app.openCertModal('${s.id}')">
-                  <i data-lucide="award"></i> Aperçu
-                </button>
-              </div>
+              <button class="btn btn-secondary btn-sm" onclick="app.printStudentCertificate('${s.id}')">
+                <i data-lucide="award"></i> Attestation A4
+              </button>
             </td>
           </tr>
         `;
