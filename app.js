@@ -1340,7 +1340,7 @@ class LSSApp {
             </tr>
           </table>
 
-          <!-- DEVISE EN BAS DE PAGE -->
+          <!-- SÉPARATEUR POINTILLÉ ET DEVISE -->
           <div class="motto-separator"></div>
           <div class="motto">« L'Excellence & la Qualité au Service de l'Innovation IT »</div>
         </div>
