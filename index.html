@@ -348,9 +348,17 @@
                   <span>Total TTC</span>
                   <span id="cart-total-ttc">0 FCFA</span>
                 </div>
-                <button class="btn btn-success" style="width: 100%; justify-content: center; margin-top: 14px;" onclick="app.checkoutPOS()">
-                  <i data-lucide="check-circle"></i> Enregistrer & Imprimer Vente
-                </button>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                  <!-- Option 1 : Enregistrer seulement (sans ouvrir la fenêtre d'impression) -->
+                  <button type="button" class="btn btn-secondary" style="flex: 1; padding: 12px; font-weight: 700;" onclick="app.processSale(false)">
+                    <i data-lucide="check-circle"></i> Enregistrer Seul
+                  </button>
+
+                  <!-- Option 2 : Enregistrer ET Imprimer le Reçu/Facture -->
+                  <button type="button" class="btn btn-primary" style="flex: 1; padding: 12px; font-weight: 700; background: #0284c7; color: #fff;" onclick="app.processSale(true)">
+                    <i data-lucide="printer"></i> Enregistrer & Imprimer
+                  </button>
+                </div>
               </div>
             </div>
           </div>

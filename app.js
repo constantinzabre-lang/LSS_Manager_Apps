@@ -684,7 +684,11 @@ class LSSApp {
     this.renderCart();
   }
 
-  checkoutPOS() {
+  processSale(shouldPrint = true) {
+    return this.checkoutPOS(shouldPrint);
+  }
+
+  checkoutPOS(shouldPrint = true) {
     if (this.posCart.length === 0) {
       alert('Votre panier est vide!');
       return;
@@ -697,7 +701,8 @@ class LSSApp {
       if (p) p.stockQty -= item.qty;
     });
 
-    const vatAmount = Math.round(subtotalHT * 0.18);
+    const applyVat = document.getElementById('pos-apply-vat') ? document.getElementById('pos-apply-vat').value === 'true' : true;
+    const vatAmount = applyVat ? Math.round(subtotalHT * 0.18) : 0;
     const totalTTC = subtotalHT + vatAmount;
 
     const invoiceId = `FACT-2026-${String(this.db.invoices.length + 1).padStart(3, '0')}`;
@@ -718,11 +723,17 @@ class LSSApp {
     this.db.invoices.unshift(newInvoice);
     this.saveDatabase();
     
-    this.printInvoiceA4(invoiceId);
+    if (shouldPrint) {
+      this.printInvoiceA4(invoiceId);
+    } else {
+      alert(`✅ Vente ${invoiceId} enregistrée avec succès !`);
+    }
 
     this.posCart = [];
     this.renderCart();
     this.renderPOSProducts();
+    if (typeof this.renderDashboard === 'function') this.renderDashboard();
+    if (typeof this.renderInvoices === 'function') this.renderInvoices();
   }
 
   saveProduct(e) {
