@@ -711,23 +711,30 @@ body {
   padding-top: 8px;
 }
 
-/* Modals */
-.modal-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
-  display: none;
+/* Masquer les fenêtres modales par défaut */
+.modal-backdrop, 
+.modal-overlay, 
+#modal-debt, 
+div[id^="modal-"] {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.75) !important;
+  backdrop-filter: blur(4px);
+  display: none !important; /* Reste masqué */
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 99999 !important;
 }
 
-.modal-backdrop.active {
-  display: flex;
+/* Afficher uniquement quand la classe active est présente */
+.modal-backdrop.active, 
+.modal-overlay.active, 
+#modal-debt.active, 
+div[id^="modal-"].active {
+  display: flex !important;
 }
 
 .modal-content {
