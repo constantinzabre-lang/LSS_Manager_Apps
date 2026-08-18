@@ -348,15 +348,24 @@
                   <span>Total TTC</span>
                   <span id="cart-total-ttc">0 FCFA</span>
                 </div>
+                <!-- NOUVEAU BLOC : DEUX BOUTONS DISTINCTS -->
                 <div style="display: flex; gap: 10px; margin-top: 15px;">
-                  <!-- Option 1 : Enregistrer seulement (sans ouvrir la fenêtre d'impression) -->
-                  <button type="button" class="btn btn-secondary" style="flex: 1; padding: 12px; font-weight: 700;" onclick="app.processSale(false)">
-                    <i data-lucide="check-circle"></i> Enregistrer Seul
+                  <!-- Option 1 : Enregistrer Seul (Gris / Neutre) -->
+                  <button type="button" 
+                          id="btn-save-only" 
+                          class="btn btn-secondary" 
+                          style="flex: 1; padding: 12px 8px; font-weight: 700; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #f8fafc; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" 
+                          onclick="app.processSale(false)">
+                    <i data-lucide="check"></i> Enregistrer
                   </button>
 
-                  <!-- Option 2 : Enregistrer ET Imprimer le Reçu/Facture -->
-                  <button type="button" class="btn btn-primary" style="flex: 1; padding: 12px; font-weight: 700; background: #0284c7; color: #fff;" onclick="app.processSale(true)">
-                    <i data-lucide="printer"></i> Enregistrer & Imprimer
+                  <!-- Option 2 : Enregistrer & Imprimer (Vert / Primaire) -->
+                  <button type="button" 
+                          id="btn-save-print" 
+                          class="btn btn-success" 
+                          style="flex: 1.2; padding: 12px 8px; font-weight: 700; border-radius: 8px; border: none; background: #16a34a; color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" 
+                          onclick="app.processSale(true)">
+                    <i data-lucide="printer"></i> Enregistrer & Impr.
                   </button>
                 </div>
               </div>
