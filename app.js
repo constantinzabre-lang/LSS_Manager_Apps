@@ -2871,6 +2871,26 @@ class LSSApp {
     printWin.document.close();
   }
 
+  sendInvoiceWhatsApp(invoiceId) {
+    const inv = (this.db && Array.isArray(this.db.invoices))
+      ? this.db.invoices.find(i => i.id === invoiceId)
+      : null;
+      
+    if (!inv || !inv.clientPhone) {
+      alert("Numéro de téléphone du client manquant !");
+      return;
+    }
+    const cleanPhone = inv.clientPhone.replace(/\D/g, '');
+    const msg = encodeURIComponent(
+      `Bonjour ${inv.clientName},\n` +
+      `Voici le récapitulatif de votre facture ${inv.id} chez LIVING STONE SERVICE :\n` +
+      `- Montant TTC : ${this.formatFCFA(inv.totalTTC || 0)}\n` +
+      `- Statut : ${inv.status || inv.paymentStatus || 'Payé'}\n\n` +
+      `Merci pour votre confiance !`
+    );
+    window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+  }
+
   printCertificateA4(studentId) {
     this.openCertModal(studentId);
     setTimeout(() => {
