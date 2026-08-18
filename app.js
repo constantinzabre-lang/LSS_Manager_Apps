@@ -1371,38 +1371,118 @@ class LSSApp {
     if (window.lucide) window.lucide.createIcons();
   }
 
+  openDebtModal(id = null) {
+    if (id && typeof id === 'string') {
+      const d = this.db.debts ? this.db.debts.find(item => item.id === id) : null;
+      if (d) {
+        this.setText('modal-debt-title', 'Modifier l\'Opération Dette / Créance');
+        this.setVal('debt-form-id', d.id);
+        this.setVal('debt-type', d.type || 'creance');
+        this.setVal('debt-date', d.date || new Date().toISOString().split('T')[0]);
+        this.setVal('debt-tiers', d.tiers || '');
+        this.setVal('debt-tel', d.tel || '');
+        this.setVal('debt-motif', d.motif || '');
+        this.setVal('debt-total', d.total !== undefined ? d.total : '');
+        this.setVal('debt-paye', d.paye !== undefined ? d.paye : '0');
+        this.setVal('debt-echeance', d.echeance || '');
+        this.setVal('debt-statut', d.statut || 'en_cours');
+      }
+    } else {
+      this.setText('modal-debt-title', 'Nouvelle Opération Dette / Créance');
+      this.setVal('debt-form-id', '');
+      this.setVal('debt-type', this.activeDebtTab || 'creance');
+      this.setVal('debt-date', new Date().toISOString().split('T')[0]);
+      this.setVal('debt-tiers', '');
+      this.setVal('debt-tel', '');
+      this.setVal('debt-motif', '');
+      this.setVal('debt-total', '');
+      this.setVal('debt-paye', '0');
+      this.setVal('debt-echeance', '');
+      this.setVal('debt-statut', 'en_cours');
+    }
+    this.openModal('modal-debt');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  editDebt(id) {
+    this.openDebtModal(id);
+  }
+
+  async syncDebtToSupabaseTable(debt) {
+    let { supabaseUrl, supabaseKey } = this.db.settings;
+    const envUrl = (typeof window !== 'undefined' && window.ENV_SUPABASE_URL) ? window.ENV_SUPABASE_URL : '';
+    const envKey = (typeof window !== 'undefined' && window.ENV_SUPABASE_KEY) ? window.ENV_SUPABASE_KEY : '';
+    supabaseUrl = (supabaseUrl || envUrl || '').trim().replace(/\/$/, '');
+    supabaseKey = (supabaseKey || envKey || '').trim();
+
+    if (!supabaseUrl || !supabaseKey) return;
+    if (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
+      supabaseUrl = 'https://' + supabaseUrl;
+    }
+
+    try {
+      const payload = {
+        date_operation: debt.date || new Date().toISOString().split('T')[0],
+        type_operation: debt.type || 'creance',
+        nom_tiers: debt.tiers || 'Tiers',
+        telephone: debt.tel || '',
+        motif: debt.motif || '',
+        montant_total: Number(debt.total || 0),
+        montant_paye: Number(debt.paye || 0),
+        date_echeance: debt.echeance || null,
+        statut: debt.statut || 'en_cours'
+      };
+
+      await fetch(`${supabaseUrl}/rest/v1/dettes_creances`, {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      console.warn('[Supabase dettes_creances direct sync notice]', e);
+    }
+  }
+
   saveDebt(e) {
-    e.preventDefault();
-    const id = document.getElementById('debt-form-id').value;
-    const type = document.getElementById('debt-type').value;
-    const date = document.getElementById('debt-date').value || new Date().toISOString().split('T')[0];
-    const tiers = document.getElementById('debt-tiers').value;
-    const tel = document.getElementById('debt-tel').value || '';
-    const motif = document.getElementById('debt-motif').value;
-    const total = Number(document.getElementById('debt-total').value || 0);
-    const paye = Number(document.getElementById('debt-paye').value || 0);
-    const echeance = document.getElementById('debt-echeance').value || '';
-    let statut = document.getElementById('debt-statut').value;
+    if (e) e.preventDefault();
+    const id = document.getElementById('debt-form-id') ? document.getElementById('debt-form-id').value : '';
+    const type = document.getElementById('debt-type') ? document.getElementById('debt-type').value : 'creance';
+    const date = (document.getElementById('debt-date') && document.getElementById('debt-date').value) ? document.getElementById('debt-date').value : new Date().toISOString().split('T')[0];
+    const tiers = document.getElementById('debt-tiers') ? document.getElementById('debt-tiers').value : '';
+    const tel = document.getElementById('debt-tel') ? document.getElementById('debt-tel').value : '';
+    const motif = document.getElementById('debt-motif') ? document.getElementById('debt-motif').value : '';
+    const total = Number(document.getElementById('debt-total') ? document.getElementById('debt-total').value : 0);
+    const paye = Number(document.getElementById('debt-paye') ? document.getElementById('debt-paye').value : 0);
+    const echeance = document.getElementById('debt-echeance') ? document.getElementById('debt-echeance').value : '';
+    let statut = document.getElementById('debt-statut') ? document.getElementById('debt-statut').value : 'en_cours';
 
     if (paye >= total && total > 0) {
       statut = 'solde';
     }
 
+    let targetDebt = null;
     if (id) {
-      const debt = this.db.debts.find(d => d.id === id);
-      if (debt) {
-        debt.type = type;
-        debt.date = date;
-        debt.tiers = tiers;
-        debt.tel = tel;
-        debt.motif = motif;
-        debt.total = total;
-        debt.paye = paye;
-        debt.echeance = echeance;
-        debt.statut = statut;
+      targetDebt = this.db.debts.find(d => d.id === id);
+      if (targetDebt) {
+        targetDebt.type = type;
+        targetDebt.date = date;
+        targetDebt.tiers = tiers;
+        targetDebt.tel = tel;
+        targetDebt.motif = motif;
+        targetDebt.total = total;
+        targetDebt.paye = paye;
+        targetDebt.echeance = echeance;
+        targetDebt.statut = statut;
       }
-    } else {
-      const newDebt = {
+    }
+
+    if (!targetDebt) {
+      targetDebt = {
         id: `DET-${String(this.db.debts.length + 1).padStart(3, '0')}`,
         type,
         date,
@@ -1414,32 +1494,15 @@ class LSSApp {
         echeance,
         statut
       };
-      this.db.debts.unshift(newDebt);
+      this.db.debts.unshift(targetDebt);
     }
 
     this.setVal('debt-form-id', '');
     this.saveDatabase();
+    this.syncDebtToSupabaseTable(targetDebt);
     this.closeModal('modal-debt');
     this.activeDebtTab = type;
     this.switchDebtTab(type);
-  }
-
-  editDebt(id) {
-    const d = this.db.debts.find(item => item.id === id);
-    if (!d) return;
-    this.setVal('debt-form-id', d.id);
-    this.setVal('debt-type', d.type);
-    this.setVal('debt-date', d.date);
-    this.setVal('debt-tiers', d.tiers);
-    this.setVal('debt-tel', d.tel);
-    this.setVal('debt-motif', d.motif);
-    this.setVal('debt-total', d.total);
-    this.setVal('debt-paye', d.paye);
-    this.setVal('debt-echeance', d.echeance);
-    this.setVal('debt-statut', d.statut);
-    
-    this.openModal('modal-debt');
-    if (window.lucide) window.lucide.createIcons();
   }
 
   settleDebt(id) {
@@ -1449,6 +1512,7 @@ class LSSApp {
       d.paye = d.total;
       d.statut = 'solde';
       this.saveDatabase();
+      this.syncDebtToSupabaseTable(d);
       this.renderDebts();
     }
   }
