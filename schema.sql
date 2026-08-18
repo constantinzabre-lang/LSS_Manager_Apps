@@ -144,6 +144,22 @@ CREATE TABLE IF NOT EXISTS public.app_sync (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 11. Table pour la gestion des Dettes & Créances
+CREATE TABLE IF NOT EXISTS public.dettes_creances (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    date_operation DATE NOT NULL DEFAULT CURRENT_DATE,
+    type_operation VARCHAR(10) CHECK (type_operation IN ('creance', 'dette')) NOT NULL, -- 'creance' = client doit, 'dette' = je dois
+    nom_tiers VARCHAR(255) NOT NULL,
+    telephone VARCHAR(50),
+    motif TEXT NOT NULL,
+    montant_total NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    montant_paye NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    reste_a_payer NUMERIC(12, 2) GENERATED ALWAYS AS (montant_total - montant_paye) STORED,
+    date_echeance DATE,
+    statut VARCHAR(20) DEFAULT 'en_cours' CHECK (statut IN ('en_cours', 'solde', 'en_retard'))
+);
+
 -- =========================================================================
 -- CONFIGURATION DROITS & SÉCURITÉ SUPABASE RLS
 -- =========================================================================
@@ -163,6 +179,7 @@ ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.app_sync ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.dettes_creances ENABLE ROW LEVEL SECURITY;
 
 -- Politiques RLS avec WITH CHECK (true) pour autoriser SELECT, INSERT, UPDATE, DELETE
 DROP POLICY IF EXISTS "Accès complet settings" ON public.settings;
@@ -175,6 +192,7 @@ DROP POLICY IF EXISTS "Accès complet invoices" ON public.invoices;
 DROP POLICY IF EXISTS "Accès complet expenses" ON public.expenses;
 DROP POLICY IF EXISTS "Accès complet logs" ON public.logs;
 DROP POLICY IF EXISTS "Accès complet app_sync" ON public.app_sync;
+DROP POLICY IF EXISTS "Accès complet dettes_creances" ON public.dettes_creances;
 
 CREATE POLICY "Accès complet settings" ON public.settings FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Accès complet clients" ON public.clients FOR ALL USING (true) WITH CHECK (true);
@@ -186,6 +204,7 @@ CREATE POLICY "Accès complet invoices" ON public.invoices FOR ALL USING (true) 
 CREATE POLICY "Accès complet expenses" ON public.expenses FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Accès complet logs" ON public.logs FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Accès complet app_sync" ON public.app_sync FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Accès complet dettes_creances" ON public.dettes_creances FOR ALL USING (true) WITH CHECK (true);
 
 -- Activation Sécurisée du Temps Réel Supabase (Publication)
 DO $$
@@ -205,4 +224,6 @@ ALTER PUBLICATION supabase_realtime ADD TABLE
   public.invoices, 
   public.expenses, 
   public.logs,
-  public.app_sync;
+  public.app_sync,
+  public.dettes_creances;
+
