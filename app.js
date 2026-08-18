@@ -1037,7 +1037,7 @@ class LSSApp {
     if (window.lucide) window.lucide.createIcons();
   }
 
-  // GÉNÉRATION ATTESTATION DE FIN DE STAGE PRATIQUE (PLEIN CADRE A4)
+  // GÉNÉRATION ATTESTATION DE STAGE A4 (POLICE AGRANDIE & COMPÉTENCES ÉDITABLES)
   printStudentCertificate(studentId) {
     const student = (this.db && Array.isArray(this.db.students))
       ? this.db.students.find(s => s.id === studentId)
@@ -1054,11 +1054,19 @@ class LSSApp {
       return;
     }
 
-    const skillsList = student.skills && student.skills.length > 0 ? student.skills : [
-      "Diagnostic matériel (surpression/surtension) et dépannage des pannes complexes de PC/Laptops.",
-      "Démontage, assemblage, nettoyage des composants et maintenance préventive.",
-      "Installation, formatage et configuration des systèmes Windows, antivirus et logiciels."
-    ];
+    // Récupération des compétences : soit un tableau, soit une chaîne avec retours à la ligne, soit les valeurs par défaut
+    let skillsList = [];
+    if (Array.isArray(student.skills) && student.skills.length > 0) {
+      skillsList = student.skills;
+    } else if (typeof student.skills === 'string' && student.skills.trim() !== '') {
+      skillsList = student.skills.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+    } else {
+      skillsList = [
+        "Diagnostic matériel (surpression/surtension) et dépannage des pannes complexes de PC/Laptops.",
+        "Démontage, assemblage, nettoyage des composants et maintenance préventive.",
+        "Installation, formatage et configuration des systèmes Windows, antivirus et logiciels."
+      ];
+    }
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -1069,7 +1077,7 @@ class LSSApp {
         <style>
           @page {
             size: A4 portrait;
-            margin: 10mm 12mm;
+            margin: 8mm 10mm;
           }
           * {
             box-sizing: border-box;
@@ -1077,22 +1085,22 @@ class LSSApp {
             print-color-adjust: exact;
           }
           html, body {
-            height: 100%;
             margin: 0;
             padding: 0;
             background: #fff;
             color: #0f172a;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            font-size: 15px; /* Police globale augmentée */
           }
           
-          /* CONTENEUR QUI S'ÉTEND STRICTEMENT SUR TOUTE LA HAUTEUR A4 */
+          /* CADRE BICOLORE PLEINE PAGE */
           .cert-container {
-            border: 2.5px solid #0284c7;
-            outline: 1.5px solid #ea580c;
-            outline-offset: -5px;
-            padding: 24px 28px 18px 28px;
+            border: 3px solid #0284c7;
+            outline: 2px solid #ea580c;
+            outline-offset: -6px;
+            padding: 24px 30px 18px 30px;
             background: #ffffff;
-            height: 272mm; /* Hauteur exacte de la zone imprimable */
+            height: 275mm;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
@@ -1110,12 +1118,12 @@ class LSSApp {
           .header-left {
             width: 38%;
             vertical-align: middle;
-            font-size: 11px;
-            line-height: 1.4;
+            font-size: 12.5px;
+            line-height: 1.45;
             color: #334155;
           }
           .header-left strong {
-            font-size: 13px;
+            font-size: 14px;
             color: #0f172a;
           }
           .header-center {
@@ -1127,52 +1135,56 @@ class LSSApp {
             width: 38%;
             text-align: right;
             vertical-align: middle;
-            font-size: 11px;
-            line-height: 1.4;
+            font-size: 12.5px;
+            line-height: 1.45;
             color: #334155;
           }
           .header-right strong {
-            font-size: 12px;
+            font-size: 13.5px;
             color: #0284c7;
           }
 
-          /* TITRES ET TEXTES */
+          /* TITRE PRINCIPAL & RÉFÉRENCE */
           .cert-title {
             text-align: center;
-            font-size: 21px;
-            font-weight: 800;
+            font-size: 24px;
+            font-weight: 900;
             color: #0369a1;
             letter-spacing: 1px;
             text-transform: uppercase;
-            margin: 12px 0 2px 0;
+            margin: 14px 0 4px 0;
           }
           .cert-ref {
             text-align: center;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 700;
             color: #475569;
-            margin-bottom: 16px;
+            margin-bottom: 18px;
           }
+
+          /* TEXTE DE PRÉSENTATION */
           .cert-intro {
             text-align: center;
-            font-size: 13.5px;
+            font-size: 15.5px;
             color: #334155;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
           }
           .student-name {
             text-align: center;
-            font-size: 26px;
-            font-weight: 800;
+            font-size: 30px; /* Nom très lisible et mis en valeur */
+            font-weight: 900;
             color: #0f172a;
             letter-spacing: 1.5px;
             text-transform: uppercase;
-            margin: 10px 0 4px 0;
+            margin: 10px 0 6px 0;
           }
           .dotted-line {
-            width: 200px;
+            width: 260px;
             margin: 0 auto 14px auto;
-            border-bottom: 2px dashed #0284c7;
+            border-bottom: 2.5px dashed #0284c7;
           }
+
+          /* BADGE DE FORMATION */
           .course-container {
             text-align: center;
             margin: 14px 0;
@@ -1182,58 +1194,58 @@ class LSSApp {
             background: #f0f9ff;
             border: 2px solid #0284c7;
             color: #0369a1;
-            padding: 10px 28px;
-            border-radius: 24px;
-            font-size: 14px;
+            padding: 10px 32px;
+            border-radius: 25px;
+            font-size: 16px;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.5px;
           }
           .period-text {
             text-align: center;
-            font-size: 13.5px;
+            font-size: 15px;
             color: #334155;
             margin: 14px 0 20px 0;
           }
 
-          /* BLOC COMPÉTENCES */
+          /* BLOC COMPÉTENCES PRATIQUES VALIDÉES */
           .skills-box {
             background: #f8fafc;
-            border: 1px solid #e2e8f0;
+            border: 1.5px solid #cbd5e1;
             border-radius: 8px;
-            padding: 18px 24px;
-            margin-bottom: 16px;
+            padding: 16px 24px;
+            margin-bottom: 18px;
           }
           .skills-title {
-            font-weight: 700;
-            font-size: 13.5px;
+            font-weight: 800;
+            font-size: 15px;
             color: #0f172a;
             margin-bottom: 8px;
           }
           .skills-list {
             margin: 0;
-            padding-left: 22px;
-            color: #334155;
-            font-size: 12.5px;
+            padding-left: 24px;
+            color: #1e293b;
+            font-size: 14px;
             line-height: 1.7;
           }
 
-          /* MENTION LÉGALE & SIGNATURE */
+          /* MENTION LÉGALE & SIGNATURES */
           .legal-mention {
             text-align: center;
             font-style: italic;
-            font-size: 12.5px;
+            font-size: 14px;
             color: #475569;
             margin: 14px 0 24px 0;
           }
           .footer-table {
             width: 100%;
-            margin-bottom: 10px;
+            margin-top: 10px;
           }
           .footer-date {
             width: 50%;
             vertical-align: top;
-            font-size: 12.5px;
+            font-size: 14px;
             color: #334155;
           }
           .footer-signature {
@@ -1242,34 +1254,34 @@ class LSSApp {
             vertical-align: top;
           }
           .footer-signature .role {
-            font-size: 13px;
+            font-size: 14.5px;
             font-weight: 800;
             color: #0f172a;
             text-transform: uppercase;
           }
           .footer-signature .name {
-            font-size: 14px;
-            font-weight: 700;
+            font-size: 16px;
+            font-weight: 800;
             color: #0369a1;
             margin-top: 45px;
           }
           .footer-signature .sub {
-            font-size: 11px;
+            font-size: 12px;
             color: #64748b;
           }
 
-          /* BAS DE PAGE DEVISE */
+          /* SÉPARATEUR POINTILLÉ ET DEVISE */
           .motto-separator {
             width: 100%;
-            border-bottom: 1px dashed #cbd5e1;
-            margin: 14px 0 8px 0;
+            border-bottom: 1.5px dashed #cbd5e1;
+            margin: 16px 0 8px 0;
           }
           .motto {
             text-align: center;
-            font-size: 11.5px;
+            font-size: 12.5px;
             font-style: italic;
             color: #0369a1;
-            font-weight: 500;
+            font-weight: 600;
           }
           @media print {
             body { padding: 0; }
@@ -1278,7 +1290,7 @@ class LSSApp {
       </head>
       <body>
         <div class="cert-container">
-          <!-- HAUT : EN-TÊTE -->
+          <!-- HAUT DE PAGE -->
           <div>
             <table class="header-table">
               <tr>
@@ -1301,7 +1313,7 @@ class LSSApp {
             </table>
 
             <div class="cert-title">ATTESTATION DE FIN DE STAGE PRATIQUE</div>
-            <div class="cert-ref">ATT-LSS-2026-${student.id ? student.id.replace(/\D/g, '') || '787' : '787'}</div>
+            <div class="cert-ref">ATT-LSS-2026-${student.id ? student.id.replace(/\D/g, '') || '2026001' : '2026001'}</div>
 
             <div class="cert-intro">
               Le Promoteur de l'Entreprise Individuelle <strong>LIVING STONE SERVICE (LSS)</strong> atteste que :
@@ -1315,13 +1327,14 @@ class LSSApp {
             </div>
 
             <div class="course-container">
-              <div class="course-pill">${student.courseTitle || student.filiere || student.track || 'INITIATION EN MAINTENANCE INFORMATIQUE'}</div>
+              <div class="course-pill">${student.courseTitle || student.filiere || 'INITIATION EN MAINTENANCE INFORMATIQUE'}</div>
             </div>
 
             <div class="period-text">
-              effectué dans nos ateliers à Ouagadougou du <strong>${student.periodStart || student.startDate || '2026-06-01'}</strong> au <strong>${student.periodEnd || student.endDate || '2026-08-01'}</strong>.
+              effectué dans nos ateliers à Ouagadougou du <strong>${student.periodStart || '2026-06-01'}</strong> au <strong>${student.periodEnd || '2026-08-01'}</strong>.
             </div>
 
+            <!-- BLOC COMPÉTENCES PERSONNALISABLES -->
             <div class="skills-box">
               <div class="skills-title">Compétences Pratiques Validées :</div>
               <ul class="skills-list">
@@ -1334,7 +1347,7 @@ class LSSApp {
             </div>
           </div>
 
-          <!-- BAS : DATE, SIGNATURE ET DEVISE -->
+          <!-- BAS DE PAGE -->
           <div>
             <table class="footer-table">
               <tr>
