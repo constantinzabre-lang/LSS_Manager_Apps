@@ -435,6 +435,10 @@ class LSSApp {
   }
 
   // 1. DASHBOARD
+  updateDashboard() {
+    this.renderDashboard();
+  }
+
   renderDashboard() {
     let totalSalesTTC = 0;
     let totalSalesHT = 0;
