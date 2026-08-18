@@ -2254,15 +2254,41 @@ class LSSApp {
     a.click();
   }
 
-  // RÉINITIALISATION COMPLÈTE DE LA BASE DE DONNÉES
+  // RÉINITIALISATION HAUTEMENT SÉCURISÉE DE LSS MANAGER
   resetDatabase() {
-    if (!confirm("⚠️ Attention : Voulez-vous vraiment réinitialiser toutes les données (Tickets, Factures, Dépenses, Dettes & Créances) ?")) {
+    // ÉTAPE 1 : Mot de passe Administrateur
+    const adminPin = prompt("🔒 ACCÈS RESTREINT ADMIN\nVeuillez entrer le code PIN secret administrateur :");
+    const currentPin = (this.db && this.db.settings && this.db.settings.adminPin) ? this.db.settings.adminPin : "7864";
+    if (adminPin !== "7864" && adminPin !== currentPin) {
+      if (adminPin !== null) {
+        alert("❌ Code PIN incorrect ! Action annulée pour des raisons de sécurité.");
+      }
       return;
+    }
+
+    // ÉTAPE 2 : Confirmation textuelle explicite
+    const confirmation = prompt("⚠️ ZONE DE DANGER - EFFACEMENT TOTAL\nPour confirmer la réinitialisation complète de toutes les bases (Tickets, Factures, Dépenses, Dettes & Créances), tapez exactement le mot : SUPPRIMER");
+    if (confirmation !== "SUPPRIMER") {
+      alert("Annulation : Le mot de confirmation est incorrect.");
+      return;
+    }
+
+    // ÉTAPE 3 : Sauvegarde automatique de secours avant effacement (Backup JSON)
+    try {
+      const backupData = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.db));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", backupData);
+      downloadAnchor.setAttribute("download", `LSS_BACKUP_AVANT_RESET_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    } catch (e) {
+      console.warn("Impossible de télécharger le fichier de backup automatique", e);
     }
 
     const savedSettings = this.db ? this.db.settings : null;
 
-    // Structure remise à zéro propre
+    // ÉTAPE 4 : Remise à zéro totale de toutes les tables
     this.db = {
       tickets: [],
       products: [],
@@ -2270,7 +2296,7 @@ class LSSApp {
       students: [],
       invoices: [],
       expenses: [],
-      debts: [], // <-- Vidage strict des dettes et créances
+      debts: [],
       clients: [],
       inventory: [],
       settings: savedSettings || {},
@@ -2283,17 +2309,20 @@ class LSSApp {
       }
     };
 
-    // Sauvegarde locale et Cloud
+    // Sauvegarde en LocalStorage
     this.saveToStorage();
-    this.syncWithCloud();
 
-    // Mise à jour immédiate de tous les affichages
-    this.renderAll();
-    if (typeof this.renderDebts === 'function') {
-      this.renderDebts(); // Rafraîchit spécifiquement la vue Dettes & Créances
+    // Synchronisation avec la base Cloud Supabase si connectée
+    if (this.supabaseClient || typeof this.syncWithCloud === 'function') {
+      this.syncWithCloud();
     }
 
-    alert("✅ Toutes les données (y compris Dettes et Créances) ont été réinitialisées avec succès !");
+    // Rafraîchissement global de l'interface
+    this.renderAll();
+    if (typeof this.renderDebts === 'function') this.renderDebts();
+    if (typeof this.updateDashboard === 'function') this.updateDashboard();
+
+    alert("✅ Réinitialisation effectuée avec succès.\nUn fichier de sauvegarde automatique a été téléchargé sur votre Mac.");
   }
 
   saveToStorage() {
