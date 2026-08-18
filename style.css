@@ -1426,3 +1426,36 @@ body {
   padding: 2px 6px;
 }
 
+/* Adaptation Responsive Smartphone */
+@media screen and (max-width: 768px) {
+  /* Le menu latéral devient un tiroir coulissant */
+  #sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 260px;
+    height: 100vh;
+    z-index: 9999;
+    transition: left 0.3s ease;
+  }
+
+  #sidebar.mobile-open {
+    left: 0;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Tableaux défilables horizontalement */
+  .table-responsive, table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Grille de caisse (POS) en 1 ou 2 colonnes */
+  #pos-products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+  }
+}
+
+
