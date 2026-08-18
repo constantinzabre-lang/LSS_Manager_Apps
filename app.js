@@ -684,40 +684,35 @@ class LSSApp {
     this.renderCart();
   }
 
-  // GESTION SÉPARÉE DES VENTES : AVEC OU SANS IMPRESSION
+  // VALIDATION DE LA VENTE : SÉPARATION ENREGISTRER / IMPRIMER
   processSale(shouldPrint = false) {
     const activeCart = (this.cart && this.cart.length > 0) ? this.cart : (this.posCart || []);
     if (!activeCart || activeCart.length === 0) {
-      alert("Votre panier est vide ! Veuillez ajouter au moins un article.");
+      alert("Votre panier est vide ! Veuillez sélectionner un article.");
       return;
     }
 
-    // Récupération des informations client et paiement
     const clientName = document.getElementById('pos-client-name')?.value || 'Client Comptant';
-    const clientPhone = document.getElementById('pos-client-phone')?.value || '';
-    const paymentMode = document.getElementById('pos-payment-mode')?.value || 'Espèces';
+    const vatMode = document.getElementById('pos-vat-mode')?.value || (document.getElementById('pos-apply-vat')?.value === 'false' ? '0' : '18');
     
-    // Calcul des montants
-    const totalHT = activeCart.reduce((sum, item) => sum + ((item.priceHT || item.price || 0) * item.qty), 0);
-    const applyVat = document.getElementById('pos-apply-vat') ? document.getElementById('pos-apply-vat').value === 'true' : true;
-    const tvaRate = 0.18; // DGI Burkina 18%
-    const totalTVA = applyVat ? Math.round(totalHT * tvaRate) : 0;
+    // Calcul des totaux HT / TVA / TTC
+    const totalHT = activeCart.reduce((sum, item) => sum + (Number(item.priceHT || item.price || 0) * item.qty), 0);
+    const tvaRate = vatMode === '18' ? 0.18 : 0;
+    const totalTVA = Math.round(totalHT * tvaRate);
     const totalTTC = totalHT + totalTVA;
 
-    // Création de la facture / vente
+    // Incrément du compteur de facture
     if (!this.db.counters) this.db.counters = {};
-    this.db.counters.invoice = (this.db.counters.invoice || this.db.invoices.length || 0) + 1;
+    this.db.counters.invoice = (this.db.counters.invoice || (this.db.invoices ? this.db.invoices.length : 0)) + 1;
     const saleId = `FAC-2026-${String(this.db.counters.invoice).padStart(3, '0')}`;
 
     const newSale = {
       id: saleId,
       docType: 'facture',
-      date: new Date().toLocaleDateString('fr-FR'),
-      dateCreated: new Date().toISOString().split('T')[0],
+      date: new Date().toISOString().slice(0, 10),
+      dateCreated: new Date().toISOString().slice(0, 10),
       clientName: clientName,
-      clientPhone: clientPhone,
-      paymentMode: paymentMode,
-      items: activeCart.map(c => ({ desc: c.name || c.desc, name: c.name || c.desc, qty: c.qty, priceHT: c.priceHT || c.price || 0 })),
+      items: activeCart.map(c => ({ desc: c.name || c.desc, name: c.name || c.desc, qty: c.qty, priceHT: Number(c.priceHT || c.price || 0) })),
       totalHT: totalHT,
       subtotalHT: totalHT,
       tva: totalTVA,
@@ -728,19 +723,19 @@ class LSSApp {
       type: 'DEFINITIVE'
     };
 
-    // Décrémentation du stock pour chaque produit vendu
-    activeCart.forEach(cartItem => {
-      const product = (this.db.products && Array.isArray(this.db.products)) ? this.db.products.find(p => p.id === cartItem.id) : null;
-      if (product) {
-        product.stock = Math.max(0, (product.stock || 0) - cartItem.qty);
+    // Mise à jour des stocks produits
+    activeCart.forEach(item => {
+      if (Array.isArray(this.db.products)) {
+        const prod = this.db.products.find(p => p.id === item.id);
+        if (prod) prod.stock = Math.max(0, (Number(prod.stock) || 0) - item.qty);
       }
-      const invItem = (this.db.inventory && Array.isArray(this.db.inventory)) ? this.db.inventory.find(i => i.id === cartItem.id) : null;
-      if (invItem) {
-        invItem.stockQty = Math.max(0, (invItem.stockQty || 0) - cartItem.qty);
+      if (Array.isArray(this.db.inventory)) {
+        const invItem = this.db.inventory.find(i => i.id === item.id);
+        if (invItem) invItem.stockQty = Math.max(0, (Number(invItem.stockQty) || 0) - item.qty);
       }
     });
 
-    // Enregistrement dans la base de données
+    // Enregistrement
     if (!Array.isArray(this.db.invoices)) this.db.invoices = [];
     this.db.invoices.unshift(newSale);
     this.saveToStorage();
@@ -756,11 +751,11 @@ class LSSApp {
     if (typeof this.renderPOSProducts === 'function') this.renderPOSProducts();
     if (typeof this.updateDashboard === 'function') this.updateDashboard();
 
-    // Condition d'impression selon le bouton cliqué
+    // Déclenchement de l'impression uniquement si demandé
     if (shouldPrint) {
       this.printInvoiceA4(saleId);
     } else {
-      alert(`✅ Vente ${saleId} enregistrée avec succès (sans impression) !`);
+      alert(`✅ Vente ${saleId} enregistrée avec succès sans impression.`);
     }
   }
 
