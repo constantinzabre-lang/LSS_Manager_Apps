@@ -907,7 +907,11 @@ class LSSApp {
       <body>
         <table class="header-table">
           <tr>
-            <td>
+            <td style="width: 80px; vertical-align: middle; padding-right: 15px;">
+              <!-- Logo Officiel LSS -->
+              <img src="logo.png" alt="Logo LSS" style="width: 75px; height: auto; object-fit: contain; border-radius: 4px;" onerror="this.src='https://via.placeholder.com/75x75?text=LSS';">
+            </td>
+            <td style="vertical-align: middle;">
               <h1 class="company-title">LIVING STONE SERVICE</h1>
               <div class="company-subtitle">
                 Expertise Matériel, Maintenance Électronique & Réseaux<br>
