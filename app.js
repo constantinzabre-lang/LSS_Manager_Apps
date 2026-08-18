@@ -2673,122 +2673,202 @@ class LSSApp {
     this.printTicketReceipt(ticketId);
   }
 
+  // IMPRESSION FACTURE DGI HOMOLOGUÉE A4
   printInvoiceA4(invoiceId) {
-    const inv = this.db.invoices.find(i => i.id === invoiceId);
-    if (!inv) return;
-    const s = this.db.settings;
+    const inv = (this.db && Array.isArray(this.db.invoices))
+      ? this.db.invoices.find(i => i.id === invoiceId)
+      : null;
 
-    let itemsHtml = '';
-    inv.items.forEach(item => {
-      const lineHT = item.qty * item.priceHT;
-      itemsHtml += `
-        <tr>
-          <td>${item.desc}</td>
-          <td style="text-align: center;">${item.qty}</td>
-          <td style="text-align: right;">${this.formatFCFA(item.priceHT)}</td>
-          <td style="text-align: right;"><strong>${this.formatFCFA(lineHT)}</strong></td>
-        </tr>
-      `;
-    });
+    if (!inv) {
+      alert("Facture introuvable !");
+      return;
+    }
 
-    const printHtml = `
-      <div style="font-family: 'Plus Jakarta Sans', Arial, sans-serif; color: #0f172a; page-break-inside: avoid; break-inside: avoid;">
-        <div class="cert-top-grid" style="border-bottom: 2px solid #109e2b; padding-bottom: 8px; margin-bottom: 10px;">
-          <div class="cert-left-meta" style="font-size: 8.5pt;">
-            <strong style="color: #0252df; font-size: 11pt;">${s.companyName}</strong><br>
-            Entreprise Individuelle<br>
-            BP : ${s.poBox || '06 BV 30379 Ouaga Zogona 10020 OUAGADOUGOU'}<br>
-            N° IFU : ${s.ifu} (du ${s.ifuDate || '2026-07-20'})<br>
-            N° RCCM : ${s.rccm} (du ${s.rccmDate || '2026-07-17'})
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      alert("Veuillez autoriser les pop-ups dans Safari pour imprimer la facture.");
+      return;
+    }
+
+    // Calculs financiers
+    const totalHT = Number(inv.totalHT || Math.round((inv.totalTTC || 0) / 1.18));
+    const tva = Number(inv.tva || Math.round(totalHT * 0.18));
+    const totalTTC = Number(inv.totalTTC || (totalHT + tva));
+
+    // Données QR Code Homologation Fiscale DGI Burkina
+    const qrData = encodeURIComponent(
+      `FACTURE NORMALISÉE DGI BURKINA\n` +
+      `Émetteur: LIVING STONE SERVICE\n` +
+      `IFU: 00320159Z | RCCM: BF-OUA-01-2026-A10-13450\n` +
+      `Facture N°: ${inv.id}\n` +
+      `Date: ${inv.date || new Date().toLocaleDateString('fr-FR')}\n` +
+      `Client: ${inv.clientName} (IFU: ${inv.clientIFU || 'Non spécifié'})\n` +
+      `Montant HT: ${totalHT} FCFA\n` +
+      `TVA 18%: ${tva} FCFA\n` +
+      `Total TTC: ${totalTTC} FCFA`
+    );
+
+    const items = inv.items && inv.items.length > 0 ? inv.items : [
+      { desc: inv.subject || "Prestations & Équipements Informatiques", qty: 1, priceHT: totalHT, totalHT: totalHT }
+    ];
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head>
+        <meta charset="UTF-8">
+        <title>Facture DGI - ${inv.id}</title>
+        <style>
+          @page { size: A4 portrait; margin: 12mm; }
+          * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #0f172a;
+            margin: 0;
+            padding: 15px;
+            font-size: 13px;
+            background: #fff;
+          }
+          .header-table { width: 100%; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 20px; }
+          .badge-facture {
+            background: #0f172a;
+            color: #fff;
+            padding: 6px 14px;
+            font-size: 14px;
+            font-weight: 800;
+            text-transform: uppercase;
+            display: inline-block;
+            border-radius: 4px;
+          }
+          .grid-2 { display: table; width: 100%; margin-bottom: 20px; }
+          .col { display: table-cell; width: 50%; vertical-align: top; }
+          .box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-right: 10px;
+          }
+          .box-right { margin-right: 0; margin-left: 10px; }
+          .box-title { font-weight: 800; font-size: 12px; text-transform: uppercase; color: #475569; margin-bottom: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; }
+          .table-items { width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 20px; }
+          .table-items th { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 10px; font-size: 12px; text-align: left; }
+          .table-items td { border: 1px solid #cbd5e1; padding: 10px; font-size: 12.5px; }
+          .totals-table { width: 45%; margin-left: auto; border-collapse: collapse; margin-bottom: 30px; }
+          .totals-table td { padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 12.5px; }
+          .totals-table .total-row { font-size: 15px; font-weight: 900; color: #0284c7; background: #f0f9ff; border-top: 2px solid #0284c7; }
+          .signatures { display: table; width: 100%; margin-top: 30px; }
+          .sign-col { display: table-cell; width: 50%; text-align: center; }
+          .sign-box { margin-top: 45px; font-size: 11px; color: #64748b; }
+        </style>
+      </head>
+      <body>
+        <table class="header-table">
+          <tr>
+            <td style="width: 80px; vertical-align: middle; padding-right: 15px;">
+              <img src="logo.png" alt="Logo LSS" style="width: 75px; height: auto;" onerror="this.src='https://via.placeholder.com/75x75?text=LSS';">
+            </td>
+            <td style="vertical-align: middle;">
+              <h1 style="font-size: 22px; font-weight: 900; margin: 0; text-transform: uppercase;">LIVING STONE SERVICE</h1>
+              <div style="font-size: 11.5px; color: #475569; margin-top: 4px; line-height: 1.4;">
+                Expertise Informatique, Vente de Matériel & Formations Pro<br>
+                Ouagadougou, Burkina Faso | Tél : +226 70 00 00 00 / 64 07 78 64<br>
+                <strong>N° IFU : 00320159Z — RCCM : BF-OUA-01-2026-A10-13450</strong>
+              </div>
+            </td>
+            <td style="text-align: right; vertical-align: top; width: 150px;">
+              <div class="badge-facture">${inv.type || 'FACTURE'}</div>
+              <div style="font-size: 13px; font-weight: 800; margin-top: 6px;">N° : ${inv.id}</div>
+              <div style="font-size: 11px; color: #64748b;">Date : ${inv.date || new Date().toLocaleDateString('fr-FR')}</div>
+              <div style="margin-top: 8px;">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=85x85&data=${qrData}" style="width: 75px; height: 75px; border: 1px solid #cbd5e1; padding: 2px; background: #fff;" alt="QR DGI">
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <div class="grid-2">
+          <div class="col">
+            <div class="box">
+              <div class="box-title">Émetteur</div>
+              <div><strong>LIVING STONE SERVICE</strong></div>
+              <div>Régime Fiscal : Synthétique / Simplifié</div>
+              <div>Siège : Ouagadougou, BF</div>
+            </div>
           </div>
-          <div class="cert-center-logo">
-            <img src="logo.png" alt="LSS Logo" style="height: 52px; width: auto;">
-          </div>
-          <div class="cert-right-meta" style="font-size: 8.5pt;">
-            <strong style="color: #109e2b; font-size: 11pt;">MAINTENANCE & VENTES</strong><br>
-            Ouagadougou, Burkina Faso<br>
-            Tél : ${s.phone || '(+226) 70 00 00 00 / (+226) 76 00 00 00'}<br>
-            <a href="mailto:${s.email || 'contactlivingstoneservice@gmail.com'}" style="color: #0252df; text-decoration: none;">${s.email || 'contactlivingstoneservice@gmail.com'}</a>
+          <div class="col">
+            <div class="box box-right">
+              <div class="box-title">Client Facturé</div>
+              <div><strong>${inv.clientName || 'Client Comptant'}</strong></div>
+              <div>N° IFU : ${inv.clientIFU || 'Non assujetti'}</div>
+              <div>Contact : ${inv.clientPhone || 'Non spécifié'}</div>
+            </div>
           </div>
         </div>
 
-        <h2 style="font-size: 15pt; font-weight: 900; color: #0252df; text-transform: uppercase; text-align: center; margin-bottom: 2px; letter-spacing: 0.5px;">
-          ${inv.docType.toUpperCase()} OFFICIELLE DGI
-        </h2>
-        <div style="font-size: 10.5pt; font-weight: 800; color: #f37021; text-align: center; margin-bottom: 10px;">
-          N° ${inv.id} — Date: ${inv.dateCreated}
-        </div>
-
-        <div class="print-meta-grid" style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; font-size: 9pt;">
-          <div>
-            <strong style="color: #0252df;">FACTURÉ À / CLIENT:</strong><br>
-            Nom / Raison Sociale: <strong>${inv.clientName}</strong><br>
-            IFU Client: ${inv.clientIfu || 'Non spécifié'}<br>
-            Téléphone: ${inv.clientPhone || 'N/A'}
-          </div>
-          <div>
-            <strong style="color: #0252df;">RÈGLEMENT & FISCALITÉ:</strong><br>
-            Statut: <strong>${inv.paymentStatus || 'Payé'}</strong><br>
-            Devise: Franc CFA (XOF)<br>
-            Réglementation: Code Général des Impôts (TVA 18%)
-          </div>
-        </div>
-
-        <table class="print-table" style="margin-bottom: 10px;">
+        <table class="table-items">
           <thead>
             <tr>
-              <th style="background: #0252df; color: #ffffff; padding: 6px 8px; font-size: 8.5pt;">Désignation Prestation / Article</th>
-              <th style="background: #0252df; color: #ffffff; padding: 6px 8px; text-align: center; font-size: 8.5pt;">Qté</th>
-              <th style="background: #0252df; color: #ffffff; padding: 6px 8px; text-align: right; font-size: 8.5pt;">Prix Unitaire HT</th>
-              <th style="background: #0252df; color: #ffffff; padding: 6px 8px; text-align: right; font-size: 8.5pt;">Total HT</th>
+              <th>Désignation des Articles / Prestations</th>
+              <th style="text-align: center; width: 60px;">Qté</th>
+              <th style="text-align: right; width: 120px;">Prix Unitaire HT</th>
+              <th style="text-align: right; width: 130px;">Total HT</th>
             </tr>
           </thead>
           <tbody>
-            ${itemsHtml}
+            ${items.map(item => `
+              <tr>
+                <td><strong>${item.desc || item.name}</strong></td>
+                <td style="text-align: center;">${item.qty || 1}</td>
+                <td style="text-align: right;">${this.formatFCFA(item.priceHT || item.price || 0)}</td>
+                <td style="text-align: right; font-weight: 700;">${this.formatFCFA(item.totalHT || (item.qty * item.priceHT) || totalHT)}</td>
+              </tr>
+            `).join('')}
           </tbody>
         </table>
 
-        <div class="print-totals" style="width: 290px; margin-left: auto; border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 6px; margin-bottom: 10px;">
-          <div class="print-totals-row" style="font-size: 9pt;"><span>Total Général HT:</span> <span>${this.formatFCFA(inv.subtotalHT)}</span></div>
-          <div class="print-totals-row" style="font-size: 9pt;"><span>TVA (18% CGI):</span> <span>${this.formatFCFA(inv.vatAmount)}</span></div>
-          <div class="print-totals-row grand-total" style="color: #0252df; border-top: 2px solid #0252df; font-size: 11pt;"><span>Total Général TTC:</span> <span>${this.formatFCFA(inv.totalTTC)}</span></div>
+        <table class="totals-table">
+          <tr>
+            <td><strong>Sous-total Hors Taxes (HT) :</strong></td>
+            <td style="text-align: right; font-weight: 700;">${this.formatFCFA(totalHT)}</td>
+          </tr>
+          <tr>
+            <td><strong>TVA 18% (CGI Burkina) :</strong></td>
+            <td style="text-align: right; font-weight: 700;">${this.formatFCFA(tva)}</td>
+          </tr>
+          <tr class="total-row">
+            <td><strong>TOTAL TTC :</strong></td>
+            <td style="text-align: right;">${this.formatFCFA(totalTTC)}</td>
+          </tr>
+        </table>
+
+        <div style="font-size: 11.5px; color: #475569; margin-top: 10px;">
+          Arrêté la présente facture à la somme de : <strong>${this.numberToWordsFr ? this.numberToWordsFr(totalTTC) : totalTTC + ' Francs CFA TTC'}</strong>.
         </div>
 
-        <div style="margin-top: 10px; font-size: 9.5pt; font-style: italic; text-align: center; background: #f1f5f9; padding: 6px 10px; border-radius: 6px; color: #334155;">
-          Arrêtée la présente facture à la somme de : <strong>${this.numberToWordsFCFA(inv.totalTTC)} Francs CFA TTC</strong>.
-        </div>
-
-        <div class="print-signatures" style="margin-top: 18px; padding-top: 6px;">
-          <div class="print-signature-box">Le Client (Bon pour accord)</div>
-          <div class="print-signature-box">
-            <strong>LE PROMOTEUR LSS</strong><br>
-            <span style="color: #0252df; font-weight: 800;">${s.promoterName}</span><br>
-            <small style="color: #64748b;">(Cachet & Signature Officiels)</small>
+        <div class="signatures">
+          <div class="sign-col">
+            <strong>Pour le Client</strong><br>
+            <span style="font-size: 11px; color: #64748b;">(Accusé de réception & cachet)</span>
+            <div class="sign-box">Date & Signature</div>
+          </div>
+          <div class="sign-col">
+            <strong>Pour LIVING STONE SERVICE</strong><br>
+            <span style="font-size: 11px; color: #64748b;">La Direction / Service Comptabilité</span>
+            <div class="sign-box">Signature & Cachet Officiels</div>
           </div>
         </div>
 
-        <!-- Bloc QR Code Officiel -->
-        <div style="text-align: center; margin-top: 10px; margin-bottom: 5px;">
-          <img 
-            src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent('LIVING STONE SERVICE\nDoc: ' + inv.id + '\nClient: ' + inv.clientName + '\nTotal: ' + inv.totalTTC + ' FCFA\nStatut: ' + (inv.paymentStatus || 'Payé'))}" 
-            alt="QR Code Authentification" 
-            style="width: 85px; height: 85px; border: 1px solid #cbd5e1; padding: 3px; border-radius: 4px; background: #fff;"
-          />
-          <div style="font-size: 9px; color: #64748b; margin-top: 2px; text-transform: uppercase; font-weight: 600;">Authenticité LSS</div>
-        </div>
-
-        <div style="margin-top: 16px; padding-top: 6px; border-top: 1px dashed #cbd5e1; text-align: center; font-size: 8pt; color: #64748b;">
-          <div style="font-weight: 700; color: #0252df; font-style: italic; margin-bottom: 2px;">
-            « ${s.motto || "L'Excellence & la Qualité au Service de l'Innovation IT"} »
-          </div>
-          <div>
-            ${s.companyName} — IFU: ${s.ifu} — RCCM: ${s.rccm} — BP: ${s.poBox || '06 BV 30379 Ouaga Zogona 10020 OUAGADOUGOU'}
-          </div>
-        </div>
-      </div>
+        <script>
+          window.onload = function() { window.print(); };
+        <\/script>
+      </body>
+      </html>
     `;
 
-    this.preparePortraitPrint(printHtml);
+    printWin.document.open();
+    printWin.document.write(htmlContent);
+    printWin.document.close();
   }
 
   printCertificateA4(studentId) {
