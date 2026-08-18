@@ -1037,7 +1037,7 @@ class LSSApp {
     if (window.lucide) window.lucide.createIcons();
   }
 
-  // GÉNÉRATION DE L'ATTESTATION DE STAGE A4 AVEC QR CODE
+  // GÉNÉRATION ATTESTATION DE FIN DE STAGE PRATIQUE (MODÈLE OFFICIEL LSS)
   printStudentCertificate(studentId) {
     const student = (this.db && Array.isArray(this.db.students))
       ? this.db.students.find(s => s.id === studentId)
@@ -1050,171 +1050,289 @@ class LSSApp {
 
     const printWin = window.open('', '_blank');
     if (!printWin) {
-      alert("Veuillez autoriser les pop-ups dans Safari pour imprimer l'attestation.");
+      alert("Veuillez autoriser les pop-ups pour afficher l'attestation.");
       return;
     }
 
-    const qrData = encodeURIComponent(
-      `ATTESTATION OFFICIELLE LSS ACADÉMIE\n` +
-      `Matricule: ${student.id}\n` +
-      `Bénéficiaire: ${student.fullName}\n` +
-      `Filière: ${student.courseTitle || student.track || student.filiere}\n` +
-      `Période: ${student.period || (student.startDate && student.endDate ? 'Du ' + student.startDate + ' au ' + student.endDate : '2026')}\n` +
-      `Statut: Certifié conforme\n` +
-      `Émetteur: LIVING STONE SERVICE (IFU: 00320159Z)`
-    );
+    // Gestion des compétences par défaut si non spécifiées
+    const skillsList = student.skills && student.skills.length > 0 ? student.skills : [
+      "Diagnostic matériel (surpression/surtension) et dépannage des pannes complexes de PC/Laptops.",
+      "Démontage, assemblage, nettoyage des composants et maintenance préventive.",
+      "Installation, formatage et configuration des systèmes Windows, antivirus et logiciels."
+    ];
 
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="fr">
       <head>
         <meta charset="UTF-8">
-        <title>Attestation de Formation - ${student.fullName}</title>
+        <title>Attestation de Stage - ${student.fullName}</title>
         <style>
-          @page { size: A4 landscape; margin: 12mm; }
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
+          * {
+            box-sizing: border-box;
+          }
           body {
-            font-family: 'Georgia', serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             color: #0f172a;
             margin: 0;
-            padding: 25px;
+            padding: 10px;
             background: #fff;
+            font-size: 13px;
           }
-          .certificate-container {
-            border: 4px double #0f172a;
-            padding: 30px 40px;
+          .cert-container {
+            border: 2px solid #0284c7;
+            padding: 24px 28px;
+            min-height: 960px;
             position: relative;
             background: #ffffff;
-            min-height: 520px;
           }
-          .cert-header {
-            text-align: center;
-            border-bottom: 2px solid #cbd5e1;
+          .header-table {
+            width: 100%;
+            border-bottom: 2px solid #0284c7;
             padding-bottom: 15px;
             margin-bottom: 25px;
-            position: relative;
           }
-          .logo-box {
-            position: absolute;
-            left: 0;
-            top: 0;
+          .header-left {
+            width: 38%;
+            vertical-align: middle;
+            font-size: 11px;
+            line-height: 1.4;
+            color: #334155;
           }
-          .qr-box {
-            position: absolute;
-            right: 0;
-            top: 0;
-            text-align: center;
-          }
-          .company-name {
-            font-size: 24px;
-            font-weight: bold;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            margin: 0;
+          .header-left strong {
+            font-size: 13px;
             color: #0f172a;
           }
-          .company-sub {
-            font-family: 'Segoe UI', sans-serif;
+          .header-center {
+            width: 24%;
+            text-align: center;
+            vertical-align: middle;
+          }
+          .header-right {
+            width: 38%;
+            text-align: right;
+            vertical-align: middle;
             font-size: 11px;
-            color: #64748b;
-            margin-top: 4px;
+            line-height: 1.4;
+            color: #334155;
+          }
+          .header-right strong {
+            font-size: 12px;
+            color: #0284c7;
+            letter-spacing: 0.5px;
           }
           .cert-title {
             text-align: center;
-            font-size: 26px;
-            font-weight: bold;
+            font-size: 20px;
+            font-weight: 800;
+            color: #0369a1;
+            letter-spacing: 1px;
             text-transform: uppercase;
-            letter-spacing: 4px;
-            color: #1e3a8a;
-            margin: 20px 0 15px 0;
+            margin-bottom: 4px;
           }
-          .cert-body {
+          .cert-ref {
             text-align: center;
-            font-size: 15px;
-            line-height: 1.8;
+            font-size: 12px;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 25px;
+          }
+          .cert-intro {
+            text-align: center;
+            font-size: 13px;
             color: #334155;
+            margin-bottom: 12px;
           }
           .student-name {
+            text-align: center;
             font-size: 24px;
-            font-weight: bold;
+            font-weight: 800;
             color: #0f172a;
-            text-decoration: underline;
-            text-underline-offset: 6px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
             margin: 10px 0;
-            font-family: 'Georgia', serif;
+            padding-bottom: 4px;
           }
-          .course-box {
-            font-size: 18px;
-            font-weight: bold;
-            color: #0f172a;
+          .dotted-line {
+            width: 180px;
+            margin: 0 auto 16px auto;
+            border-bottom: 2px dashed #0284c7;
+          }
+          .course-container {
+            text-align: center;
+            margin: 16px 0;
+          }
+          .course-pill {
+            display: inline-block;
+            background: #f0f9ff;
+            border: 1.5px solid #0284c7;
+            color: #0369a1;
+            padding: 8px 24px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .period-text {
+            text-align: center;
+            font-size: 13px;
+            color: #334155;
+            margin-bottom: 25px;
+          }
+          .skills-box {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
-            padding: 8px 16px;
-            display: inline-block;
-            border-radius: 4px;
-            margin: 10px 0;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 30px;
           }
-          .cert-footer {
-            margin-top: 40px;
-            display: table;
+          .skills-title {
+            font-weight: 700;
+            font-size: 13px;
+            color: #0f172a;
+            margin-bottom: 10px;
+          }
+          .skills-list {
+            margin: 0;
+            padding-left: 20px;
+            color: #334155;
+            font-size: 12.5px;
+            line-height: 1.6;
+          }
+          .legal-mention {
+            text-align: center;
+            font-style: italic;
+            font-size: 12px;
+            color: #475569;
+            margin-bottom: 40px;
+          }
+          .footer-table {
             width: 100%;
+            margin-top: 20px;
           }
-          .footer-col {
-            display: table-cell;
+          .footer-date {
             width: 50%;
             vertical-align: top;
-            text-align: center;
-            font-family: 'Segoe UI', sans-serif;
             font-size: 12px;
+            color: #334155;
           }
-          .sign-line {
-            margin-top: 50px;
-            font-weight: bold;
+          .footer-signature {
+            width: 50%;
+            text-align: right;
+            vertical-align: top;
+          }
+          .footer-signature .role {
+            font-size: 13px;
+            font-weight: 800;
             color: #0f172a;
+            text-transform: uppercase;
+          }
+          .footer-signature .name {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0369a1;
+            margin-top: 35px;
+          }
+          .footer-signature .sub {
+            font-size: 11px;
+            color: #64748b;
+          }
+          .motto {
+            text-align: center;
+            font-size: 11px;
+            font-style: italic;
+            color: #0284c7;
+            position: absolute;
+            bottom: 15px;
+            left: 0;
+            right: 0;
+          }
+          @media print {
+            body { padding: 0; }
           }
         </style>
       </head>
       <body>
-        <div class="certificate-container">
-          <div class="cert-header">
-            <div class="logo-box">
-              <img src="logo.png" alt="LSS" style="width: 75px; height: auto;" onerror="this.src='https://via.placeholder.com/75x75?text=LSS';">
-            </div>
-            <h1 class="company-name">LIVING STONE SERVICE</h1>
-            <div class="company-sub">
-              Centre Technique & Pôle Formation Professionnelle IT<br>
-              Ouagadougou, Burkina Faso | Tél : +226 70 00 00 00 / 64 07 78 64<br>
-              IFU : 00320159Z — RCCM : BF-OUA-01-2026-A10-13450
-            </div>
-            <div class="qr-box">
-              <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${qrData}" style="width: 75px; height: 75px; border: 1px solid #cbd5e1; padding: 2px; background: #fff;" alt="QR Authentification">
-              <div style="font-family: 'Segoe UI', sans-serif; font-size: 8px; color: #64748b; margin-top: 2px;">VÉRIFICATION OFFICIELLE</div>
-            </div>
+        <div class="cert-container">
+          <!-- EN-TÊTE 3 COLONNES -->
+          <table class="header-table">
+            <tr>
+              <td class="header-left">
+                <strong>LIVING STONE SERVICE (LSS)</strong><br>
+                Entreprise Individuelle<br>
+                N° IFU : 00320159Z<br>
+                N° RCCM : BF-OUA-01-2026-A10-13450
+              </td>
+              <td class="header-center">
+                <img src="logo.png" alt="LSS" style="width: 70px; height: auto;" onerror="this.src='https://via.placeholder.com/70x70?text=LSS';">
+              </td>
+              <td class="header-right">
+                <strong>MAINTENANCE & FORMATIONS</strong><br>
+                Ouagadougou, Burkina Faso<br>
+                Tél : +226 70 00 00 00 / +226 76 00 00 00<br>
+                constantinzabre@gmail.com
+              </td>
+            </tr>
+          </table>
+
+          <!-- TITRE DE L'ATTESTATION -->
+          <div class="cert-title">ATTESTATION DE FIN DE STAGE PRATIQUE</div>
+          <div class="cert-ref">ATT-LSS-2026-${student.id ? student.id.replace(/\D/g, '') || '787' : '787'}</div>
+
+          <!-- CORPS DE TEXTE -->
+          <div class="cert-intro">
+            Le Promoteur de l'Entreprise Individuelle <strong>LIVING STONE SERVICE (LSS)</strong> atteste que :
           </div>
 
-          <div class="cert-title">Attestation de Formation</div>
+          <div class="student-name">${student.fullName || 'LANKOANDE NOÉ'}</div>
+          <div class="dotted-line"></div>
 
-          <div class="cert-body">
-            Il est attesté par la présente que :
-            <div class="student-name">${student.fullName}</div>
-            Matricule : <strong>${student.id}</strong><br>
-            A suivi et validé avec succès le programme de formation pratique en :
-            <br>
-            <div class="course-box">${student.courseTitle || student.track || student.filiere || 'Initiation en Maintenance Informatique'}</div>
-            <br>
-            Période : <strong>${student.period || (student.startDate && student.endDate ? 'Du ' + student.startDate + ' au ' + student.endDate : '2026')}</strong> — Encadrement assuré par <strong>${student.mentor || 'ZABRE S. Constantin'}</strong>
+          <div class="cert-intro">
+            a suivi avec assiduité et succès un stage pratique de formation professionnelle en :
           </div>
 
-          <div class="cert-footer">
-            <div class="footer-col">
-              Fait à Ouagadougou, le ${new Date().toLocaleDateString('fr-FR')}<br>
-              <span style="color: #64748b;">Réf : CERT-${student.id}</span>
-            </div>
-            <div class="footer-col">
-              <strong>Le Directeur / Formateur Principal</strong>
-              <div class="sign-line">${student.mentor || 'ZABRE S. Constantin'}</div>
-              <div style="font-size: 10px; color: #64748b;">Cachet & Signature</div>
-            </div>
+          <div class="course-container">
+            <div class="course-pill">${student.courseTitle || student.filiere || student.track || 'MAINTENANCE INFORMATIQUE & SECRÉTARIAT NUMÉRIQUE'}</div>
           </div>
+
+          <div class="period-text">
+            effectué dans nos ateliers à Ouagadougou du <strong>${student.periodStart || student.startDate || '2026-07-23'}</strong> au <strong>${student.periodEnd || student.endDate || '2026-08-22'}</strong>.
+          </div>
+
+          <!-- BLOC COMPÉTENCES VALIDÉES -->
+          <div class="skills-box">
+            <div class="skills-title">Compétences Pratiques Validées :</div>
+            <ul class="skills-list">
+              ${skillsList.map(skill => `<li>${skill}</li>`).join('')}
+            </ul>
+          </div>
+
+          <!-- MENTION LÉGALE -->
+          <div class="legal-mention">
+            En foi de quoi, la présente attestation lui est délivrée pour servir et valoir ce que de droit.
+          </div>
+
+          <!-- SIGNATURES -->
+          <table class="footer-table">
+            <tr>
+              <td class="footer-date">
+                Fait à Ouagadougou, le <strong>${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+              </td>
+              <td class="footer-signature">
+                <div class="role">LE PROMOTEUR</div>
+                <div class="name">ZABRE S. Constantin</div>
+                <div class="sub">(Cachet & Signature Officiels)</div>
+              </td>
+            </tr>
+          </table>
+
+          <!-- DEVISE EN BAS DE PAGE -->
+          <div class="motto">« L'Excellence & la Qualité au Service de l'Innovation IT »</div>
         </div>
 
         <script>
