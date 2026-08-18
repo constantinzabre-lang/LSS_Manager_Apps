@@ -908,8 +908,7 @@ class LSSApp {
         <table class="header-table">
           <tr>
             <td style="width: 80px; vertical-align: middle; padding-right: 15px;">
-              <!-- Logo Officiel LSS -->
-              <img src="logo.png" alt="Logo LSS" style="width: 75px; height: auto; object-fit: contain; border-radius: 4px;" onerror="this.src='https://via.placeholder.com/75x75?text=LSS';">
+              <img src="logo.png" alt="Logo LSS" style="width: 75px; height: auto; border-radius: 4px;" onerror="this.src='https://via.placeholder.com/75x75?text=LSS';">
             </td>
             <td style="vertical-align: middle;">
               <h1 class="company-title">LIVING STONE SERVICE</h1>
@@ -919,10 +918,17 @@ class LSSApp {
                 N° IFU : 00320159Z — RCCM : BF-OUA-01-2026-A10-13450
               </div>
             </td>
-            <td class="doc-badge">
+            <td class="doc-badge" style="text-align: right; vertical-align: top; width: 140px;">
               <div class="badge-title">ORDRE DE MISSION IT</div>
-              <div style="font-size: 12px; font-weight: 700; margin-top: 6px;">Réf : ${project.id}</div>
-              <div style="font-size: 11px; color: #64748b;">Date : ${new Date().toLocaleDateString('fr-FR')}</div>
+              <div style="font-size: 12px; font-weight: 700; margin-top: 4px;">Réf : ${project.id}</div>
+              <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Date : ${new Date().toLocaleDateString('fr-FR')}</div>
+              
+              <!-- QR Code Projet -->
+              <img 
+                src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent('LIVING STONE SERVICE\nMission: ' + project.id + '\nClient: ' + (project.clientName || 'SOMITA SA') + '\nBudget: ' + (project.budgetTTC || 0) + ' FCFA\nIFU: 00320159Z')}" 
+                alt="QR Code" 
+                style="width: 75px; height: 75px; border: 1px solid #cbd5e1; padding: 2px; border-radius: 4px; background: #fff;"
+              />
             </td>
           </tr>
         </table>
