@@ -2230,7 +2230,17 @@ class LSSApp {
           </div>
         </div>
 
-        <div style="margin-top: 35px; padding-top: 10px; border-top: 1px dashed #cbd5e1; text-align: center; font-size: 8.5pt; color: #64748b;">
+        <!-- Bloc QR Code Officiel -->
+        <div style="text-align: center; margin-top: 15px; margin-bottom: 5px;">
+          <img 
+            src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent('LIVING STONE SERVICE\nDoc: ' + t.id + '\nClient: ' + t.clientName + '\nTotal: ' + t.costTTC + ' FCFA\nStatut: ' + t.status)}" 
+            alt="QR Code Authentification" 
+            style="width: 85px; height: 85px; border: 1px solid #cbd5e1; padding: 3px; border-radius: 4px; background: #fff;"
+          />
+          <div style="font-size: 9px; color: #64748b; margin-top: 2px; text-transform: uppercase; font-weight: 600;">Authenticité LSS</div>
+        </div>
+
+        <div style="margin-top: 20px; padding-top: 10px; border-top: 1px dashed #cbd5e1; text-align: center; font-size: 8.5pt; color: #64748b;">
           <div style="font-weight: 700; color: #0252df; font-style: italic; margin-bottom: 2px;">
             « ${s.motto || "L'Excellence & la Qualité au Service de l'Innovation IT"} »
           </div>
@@ -2351,6 +2361,16 @@ class LSSApp {
             <span style="color: #0252df; font-weight: 800;">${s.promoterName}</span><br>
             <small style="color: #64748b;">(Cachet & Signature Officiels)</small>
           </div>
+        </div>
+
+        <!-- Bloc QR Code Officiel -->
+        <div style="text-align: center; margin-top: 10px; margin-bottom: 5px;">
+          <img 
+            src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent('LIVING STONE SERVICE\nDoc: ' + inv.id + '\nClient: ' + inv.clientName + '\nTotal: ' + inv.totalTTC + ' FCFA\nStatut: ' + (inv.paymentStatus || 'Payé'))}" 
+            alt="QR Code Authentification" 
+            style="width: 85px; height: 85px; border: 1px solid #cbd5e1; padding: 3px; border-radius: 4px; background: #fff;"
+          />
+          <div style="font-size: 9px; color: #64748b; margin-top: 2px; text-transform: uppercase; font-weight: 600;">Authenticité LSS</div>
         </div>
 
         <div style="margin-top: 16px; padding-top: 6px; border-top: 1px dashed #cbd5e1; text-align: center; font-size: 8pt; color: #64748b;">
