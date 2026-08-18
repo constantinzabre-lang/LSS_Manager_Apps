@@ -125,8 +125,10 @@ class LSSApp {
     this.activeDebtTab = 'creance';
     this.enteredPin = '';
     this.posCart = [];
-    this.isAdminAuthenticated = true;
-    this.userRole = 'admin';
+    this.isAuthenticated = false;
+    this.isLocked = true;
+    this.isAdminAuthenticated = false;
+    this.userRole = null;
     this.init();
   }
 
@@ -160,11 +162,10 @@ class LSSApp {
   }
 
   init() {
-    this.isAdminAuthenticated = true;
-    this.userRole = 'admin';
-    const lockScreen = document.getElementById('lock-screen');
-    if (lockScreen) lockScreen.classList.remove('active');
-    this.updateSidebarUserBadge('ZABRE S. Constantin', 'Promoteur / Admin', 'ZC');
+    this.isAuthenticated = false;
+    this.isLocked = true;
+    this.isAdminAuthenticated = false;
+    this.userRole = null;
 
     document.documentElement.setAttribute('data-theme', this.db.settings.theme || 'dark');
     
@@ -183,7 +184,9 @@ class LSSApp {
     }
 
     this.loadSettingsForm();
-    this.navigate(this.currentView);
+    
+    // Verrouillage systématique au démarrage
+    this.lockApp();
 
     this.pullFromSupabase(false);
     setInterval(() => {
@@ -278,21 +281,28 @@ class LSSApp {
     const isMatchStaff = (entered === staffPin) || (entered === '5678');
 
     if (isMatchAdmin) {
+      this.isAuthenticated = true;
+      this.isLocked = false;
       this.isAdminAuthenticated = true;
       this.userRole = 'admin';
       this.updateSidebarUserBadge('ZABRE S. Constantin', 'Promoteur / Admin', 'ZC');
       const lockScreen = document.getElementById('lock-screen');
       if (lockScreen) lockScreen.classList.remove('active');
       this.clearPin();
+      this.navigate(this.currentView || 'dashboard');
     } else if (isMatchStaff) {
+      this.isAuthenticated = true;
+      this.isLocked = false;
       this.isAdminAuthenticated = false;
       this.userRole = 'staff';
       this.updateSidebarUserBadge('Secrétariat LSS', 'Service Accueil & Caisse', 'SEC');
       const lockScreen = document.getElementById('lock-screen');
       if (lockScreen) lockScreen.classList.remove('active');
       this.clearPin();
-      if (['dashboard', 'reports', 'settings'].includes(this.currentView)) {
+      if (!this.currentView || ['dashboard', 'reports', 'settings'].includes(this.currentView)) {
         this.navigate('sales');
+      } else {
+        this.navigate(this.currentView);
       }
     } else {
       const errorMsg = document.getElementById('pin-error-msg');
@@ -313,22 +323,33 @@ class LSSApp {
   }
 
   lockApp() {
+    this.isAuthenticated = false;
+    this.isLocked = true;
     this.isAdminAuthenticated = false;
     this.userRole = null;
     this.clearPin();
     this.selectRoleTab('admin');
     const lockScreen = document.getElementById('lock-screen');
     if (lockScreen) lockScreen.classList.add('active');
-    const inputField = document.getElementById('pin-input-field');
-    if (inputField) inputField.focus();
+    setTimeout(() => {
+      const inputField = document.getElementById('pin-input-field');
+      if (inputField) inputField.focus();
+    }, 100);
   }
 
   navigate(viewName) {
-    this.currentView = viewName;
-    if (!this.userRole) {
-      this.userRole = 'admin';
-      this.isAdminAuthenticated = true;
+    if (!this.isAuthenticated || this.isLocked || !this.userRole) {
+      this.currentView = viewName;
+      this.lockApp();
+      return;
     }
+
+    if (this.userRole === 'staff' && ['dashboard', 'reports', 'settings'].includes(viewName)) {
+      alert('⚠️ Accès réservé au Promoteur / Administrateur.');
+      viewName = 'sales';
+    }
+
+    this.currentView = viewName;
     
     document.querySelectorAll('.nav-item').forEach(item => {
       item.classList.remove('active');
