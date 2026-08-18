@@ -1085,9 +1085,12 @@ class LSSApp {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             font-size: 12px;
           }
+          /* Cadre principal avec double bordure (Ligne fine orange à l'intérieur, bleue à l'extérieur) */
           .cert-container {
-            border: 2px solid #0284c7;
-            padding: 16px 22px 12px 22px;
+            border: 2.5px solid #0284c7; /* Ligne extérieure bleue */
+            outline: 1.5px solid #ea580c; /* Ligne intérieure orange / terracotta */
+            outline-offset: -5px; /* Décalage pour créer le double liseré bicolore */
+            padding: 18px 24px 14px 24px;
             background: #ffffff;
             box-sizing: border-box;
             width: 100%;
@@ -1243,14 +1246,20 @@ class LSSApp {
             font-size: 9.5px;
             color: #64748b;
           }
+          /* Ligne pointillée fine au-dessus de la devise */
+          .motto-separator {
+            width: 100%;
+            border-bottom: 1px dashed #cbd5e1;
+            margin: 12px 0 6px 0;
+          }
+
+          /* Devise officielle centrée */
           .motto {
             text-align: center;
-            font-size: 9.5px;
+            font-size: 10.5px;
             font-style: italic;
-            color: #0284c7;
-            margin-top: 6px;
-            padding-top: 4px;
-            border-top: 1px solid #e2e8f0;
+            color: #0369a1;
+            font-weight: 500;
           }
           @media print {
             body { padding: 0; }
@@ -1332,6 +1341,7 @@ class LSSApp {
           </table>
 
           <!-- DEVISE EN BAS DE PAGE -->
+          <div class="motto-separator"></div>
           <div class="motto">« L'Excellence & la Qualité au Service de l'Innovation IT »</div>
         </div>
 
