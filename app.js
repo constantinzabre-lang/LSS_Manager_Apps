@@ -2250,22 +2250,68 @@ class LSSApp {
     a.click();
   }
 
+  // RÉINITIALISATION COMPLÈTE DE LA BASE DE DONNÉES
   resetDatabase() {
-    if (confirm('Attention! Voulez-vous vraiment réinitialiser toutes les données de l\'atelier aux valeurs de démonstration?')) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultDatabase));
-      this.db = defaultDatabase;
-      this.init();
-      alert('Base de données réinitialisée aux valeurs de démonstration.');
+    if (!confirm("⚠️ Attention : Voulez-vous vraiment réinitialiser toutes les données (Tickets, Factures, Dépenses, Dettes & Créances) ?")) {
+      return;
     }
+
+    const savedSettings = this.db ? this.db.settings : null;
+
+    // Structure remise à zéro propre
+    this.db = {
+      tickets: [],
+      products: [],
+      projects: [],
+      students: [],
+      invoices: [],
+      expenses: [],
+      debts: [], // <-- Vidage strict des dettes et créances
+      clients: [],
+      inventory: [],
+      settings: savedSettings || {},
+      counters: {
+        ticket: 0,
+        invoice: 0,
+        expense: 0,
+        student: 0,
+        debt: 0
+      }
+    };
+
+    // Sauvegarde locale et Cloud
+    this.saveToStorage();
+    this.syncWithCloud();
+
+    // Mise à jour immédiate de tous les affichages
+    this.renderAll();
+    if (typeof this.renderDebts === 'function') {
+      this.renderDebts(); // Rafraîchit spécifiquement la vue Dettes & Créances
+    }
+
+    alert("✅ Toutes les données (y compris Dettes et Créances) ont été réinitialisées avec succès !");
+  }
+
+  saveToStorage() {
+    this.saveDatabase();
+  }
+
+  syncWithCloud() {
+    this.syncToSupabase();
+  }
+
+  renderAll() {
+    this.renderCurrentView();
+    if (typeof this.renderDebts === 'function') this.renderDebts();
   }
 
   purgeAllData() {
-    if (!confirm('⚠️ ATTENTION : Vous allez PURGER ET RÉINITIALISER TOUTE LA BASE DE DONNÉES À ZÉRO.\n\nSont supprimés définitivement :\n- Tous les Tickets de Maintenance\n- Toutes les Factures & Devis DGI\n- Toutes les Ventes POS\n- Tous les Stagiaires (LSS Académie)\n- Toutes les Dépenses & Projets\n- Tous les Clients & Stocks\n\nLes compteurs de numérotation seront remis à 000. Les paramètres de l\'entreprise (Nom, IFU, RCCM, PIN) seront conservés.\n\nVoulez-vous vraiment continuer ?')) {
+    if (!confirm('⚠️ ATTENTION : Vous allez PURGER ET RÉINITIALISER TOUTE LA BASE DE DONNÉES À ZÉRO.\n\nSont supprimés définitivement :\n- Tous les Tickets de Maintenance\n- Toutes les Factures & Devis DGI\n- Toutes les Ventes POS\n- Tous les Stagiaires (LSS Académie)\n- Toutes les Dépenses & Projets\n- Toutes les Dettes & Créances\n- Tous les Clients & Stocks\n\nLes compteurs de numérotation seront remis à 000. Les paramètres de l\'entreprise (Nom, IFU, RCCM, PIN) seront conservés.\n\nVoulez-vous vraiment continuer ?')) {
       return;
     }
 
     const enteredPin = prompt('Entrez votre Code PIN de Sécurité (Par défaut: 1234) pour valider la purge complète :');
-    if (enteredPin !== this.db.settings.adminPin) {
+    if (enteredPin !== (this.db.settings ? this.db.settings.adminPin : '1234')) {
       alert('Code PIN incorrect. Purge annulée par sécurité.');
       return;
     }
@@ -2277,8 +2323,11 @@ class LSSApp {
     this.db.clients = [];
     this.db.inventory = [];
     this.db.projects = [];
+    this.db.debts = [];
     this.posCart = [];
-    this.db.settings.counters = { tickets: 0, invoices: 0, students: 0, expenses: 0 };
+    if (this.db.settings) {
+      this.db.settings.counters = { tickets: 0, invoices: 0, students: 0, expenses: 0, debts: 0 };
+    }
 
     this.saveDatabase();
     this.init();
