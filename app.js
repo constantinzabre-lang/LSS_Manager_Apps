@@ -684,56 +684,88 @@ class LSSApp {
     this.renderCart();
   }
 
-  processSale(shouldPrint = true) {
-    return this.checkoutPOS(shouldPrint);
-  }
-
-  checkoutPOS(shouldPrint = true) {
-    if (this.posCart.length === 0) {
-      alert('Votre panier est vide!');
+  // GESTION SÉPARÉE DES VENTES : AVEC OU SANS IMPRESSION
+  processSale(shouldPrint = false) {
+    const activeCart = (this.cart && this.cart.length > 0) ? this.cart : (this.posCart || []);
+    if (!activeCart || activeCart.length === 0) {
+      alert("Votre panier est vide ! Veuillez ajouter au moins un article.");
       return;
     }
 
-    let subtotalHT = 0;
-    this.posCart.forEach(item => {
-      subtotalHT += item.priceHT * item.qty;
-      const p = this.db.inventory.find(inv => inv.id === item.id);
-      if (p) p.stockQty -= item.qty;
-    });
-
+    // Récupération des informations client et paiement
+    const clientName = document.getElementById('pos-client-name')?.value || 'Client Comptant';
+    const clientPhone = document.getElementById('pos-client-phone')?.value || '';
+    const paymentMode = document.getElementById('pos-payment-mode')?.value || 'Espèces';
+    
+    // Calcul des montants
+    const totalHT = activeCart.reduce((sum, item) => sum + ((item.priceHT || item.price || 0) * item.qty), 0);
     const applyVat = document.getElementById('pos-apply-vat') ? document.getElementById('pos-apply-vat').value === 'true' : true;
-    const vatAmount = applyVat ? Math.round(subtotalHT * 0.18) : 0;
-    const totalTTC = subtotalHT + vatAmount;
+    const tvaRate = 0.18; // DGI Burkina 18%
+    const totalTVA = applyVat ? Math.round(totalHT * tvaRate) : 0;
+    const totalTTC = totalHT + totalTVA;
 
-    const invoiceId = `FACT-2026-${String(this.db.invoices.length + 1).padStart(3, '0')}`;
-    const newInvoice = {
-      id: invoiceId,
+    // Création de la facture / vente
+    if (!this.db.counters) this.db.counters = {};
+    this.db.counters.invoice = (this.db.counters.invoice || this.db.invoices.length || 0) + 1;
+    const saleId = `FAC-2026-${String(this.db.counters.invoice).padStart(3, '0')}`;
+
+    const newSale = {
+      id: saleId,
       docType: 'facture',
-      clientName: document.getElementById('pos-client-name')?.value || 'Client Comptant',
-      clientIfu: '',
-      clientPhone: '',
-      items: this.posCart.map(c => ({ desc: c.name, qty: c.qty, priceHT: c.priceHT })),
-      subtotalHT: subtotalHT,
-      vatAmount: vatAmount,
+      date: new Date().toLocaleDateString('fr-FR'),
+      dateCreated: new Date().toISOString().split('T')[0],
+      clientName: clientName,
+      clientPhone: clientPhone,
+      paymentMode: paymentMode,
+      items: activeCart.map(c => ({ desc: c.name || c.desc, name: c.name || c.desc, qty: c.qty, priceHT: c.priceHT || c.price || 0 })),
+      totalHT: totalHT,
+      subtotalHT: totalHT,
+      tva: totalTVA,
+      vatAmount: totalTVA,
       totalTTC: totalTTC,
+      status: 'PAYE',
       paymentStatus: 'Payé',
-      dateCreated: new Date().toISOString().split('T')[0]
+      type: 'DEFINITIVE'
     };
 
-    this.db.invoices.unshift(newInvoice);
-    this.saveDatabase();
-    
-    if (shouldPrint) {
-      this.printInvoiceA4(invoiceId);
-    } else {
-      alert(`✅ Vente ${invoiceId} enregistrée avec succès !`);
+    // Décrémentation du stock pour chaque produit vendu
+    activeCart.forEach(cartItem => {
+      const product = (this.db.products && Array.isArray(this.db.products)) ? this.db.products.find(p => p.id === cartItem.id) : null;
+      if (product) {
+        product.stock = Math.max(0, (product.stock || 0) - cartItem.qty);
+      }
+      const invItem = (this.db.inventory && Array.isArray(this.db.inventory)) ? this.db.inventory.find(i => i.id === cartItem.id) : null;
+      if (invItem) {
+        invItem.stockQty = Math.max(0, (invItem.stockQty || 0) - cartItem.qty);
+      }
+    });
+
+    // Enregistrement dans la base de données
+    if (!Array.isArray(this.db.invoices)) this.db.invoices = [];
+    this.db.invoices.unshift(newSale);
+    this.saveToStorage();
+    if (this.supabaseClient || typeof this.syncWithCloud === 'function') {
+      this.syncWithCloud();
     }
 
+    // Réinitialisation du panier
+    this.cart = [];
     this.posCart = [];
     this.renderCart();
-    this.renderPOSProducts();
-    if (typeof this.renderDashboard === 'function') this.renderDashboard();
-    if (typeof this.renderInvoices === 'function') this.renderInvoices();
+    if (typeof this.renderProducts === 'function') this.renderProducts();
+    if (typeof this.renderPOSProducts === 'function') this.renderPOSProducts();
+    if (typeof this.updateDashboard === 'function') this.updateDashboard();
+
+    // Condition d'impression selon le bouton cliqué
+    if (shouldPrint) {
+      this.printInvoiceA4(saleId);
+    } else {
+      alert(`✅ Vente ${saleId} enregistrée avec succès (sans impression) !`);
+    }
+  }
+
+  checkoutPOS(shouldPrint = false) {
+    return this.processSale(shouldPrint);
   }
 
   saveProduct(e) {
