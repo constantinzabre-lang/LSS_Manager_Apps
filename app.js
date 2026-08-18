@@ -739,26 +739,36 @@ class LSSApp {
     this.renderPOSProducts();
   }
 
-  // 4. PROJECTS
+  // 4. RENDU PRESTATIONS & AUDITS
   renderProjects() {
     const tbody = document.getElementById('projects-tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    if (this.db && Array.isArray(this.db.projects)) {
-      this.db.projects.forEach(p => {
-        tbody.innerHTML += `
-          <tr>
-            <td><strong>${p.id}</strong></td>
-            <td>${p.title}</td>
-            <td>${p.clientName}</td>
-            <td>${p.category}</td>
-            <td><strong>${this.formatFCFA(p.budgetTTC)}</strong></td>
-            <td><span class="badge ${this.getBadgeClass(p.status)}">${p.status}</span></td>
-            <td><button class="btn btn-secondary btn-sm" onclick="app.printProjectSheet('${p.id}')"><i data-lucide="printer"></i> Fiche A4</button></td>
-          </tr>
-        `;
-      });
+
+    const list = (this.db && Array.isArray(this.db.projects)) ? this.db.projects : [];
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Aucun contrat ou projet IT en cours</td></tr>';
+      return;
     }
+
+    list.forEach(p => {
+      tbody.innerHTML += `
+        <tr>
+          <td><strong>${p.id}</strong></td>
+          <td><strong>${p.title}</strong></td>
+          <td>${p.clientName}</td>
+          <td><span class="badge badge-info">${p.category || 'Audit & Conseil'}</span></td>
+          <td><strong>${this.formatFCFA(p.budgetTTC)}</strong></td>
+          <td><span class="badge ${this.getBadgeClass(p.status)}">${p.status}</span></td>
+          <td>
+            <button class="btn btn-secondary btn-sm" onclick="app.printProjectSheet('${p.id}')">
+              <i data-lucide="printer"></i> Fiche A4
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+
     if (window.lucide) window.lucide.createIcons();
   }
 
