@@ -1030,8 +1030,11 @@ class LSSApp {
                 <button class="btn btn-secondary btn-sm" onclick="app.editStudent('${s.id}')">
                   <i data-lucide="edit-3"></i> Modifier
                 </button>
+                <button class="btn btn-success btn-sm" onclick="app.printStudentCertificate('${s.id}')">
+                  <i data-lucide="printer"></i> Imprimer A4
+                </button>
                 <button class="btn btn-primary btn-sm" onclick="app.openCertModal('${s.id}')">
-                  <i data-lucide="award"></i> Aperçu & Éditeur A4
+                  <i data-lucide="award"></i> Aperçu
                 </button>
               </div>
             </td>
@@ -1039,6 +1042,199 @@ class LSSApp {
         `;
       });
     }
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  // GÉNÉRATION DE L'ATTESTATION DE STAGE A4 AVEC QR CODE
+  printStudentCertificate(studentId) {
+    const student = (this.db && Array.isArray(this.db.students))
+      ? this.db.students.find(s => s.id === studentId)
+      : null;
+
+    if (!student) {
+      alert("Stagiaire introuvable !");
+      return;
+    }
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      alert("Veuillez autoriser les pop-ups dans Safari pour imprimer l'attestation.");
+      return;
+    }
+
+    const qrData = encodeURIComponent(
+      `ATTESTATION OFFICIELLE LSS ACADÉMIE\n` +
+      `Matricule: ${student.id}\n` +
+      `Bénéficiaire: ${student.fullName}\n` +
+      `Filière: ${student.courseTitle || student.track || student.filiere}\n` +
+      `Période: ${student.period || (student.startDate && student.endDate ? 'Du ' + student.startDate + ' au ' + student.endDate : '2026')}\n` +
+      `Statut: Certifié conforme\n` +
+      `Émetteur: LIVING STONE SERVICE (IFU: 00320159Z)`
+    );
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head>
+        <meta charset="UTF-8">
+        <title>Attestation de Formation - ${student.fullName}</title>
+        <style>
+          @page { size: A4 landscape; margin: 12mm; }
+          body {
+            font-family: 'Georgia', serif;
+            color: #0f172a;
+            margin: 0;
+            padding: 25px;
+            background: #fff;
+          }
+          .certificate-container {
+            border: 4px double #0f172a;
+            padding: 30px 40px;
+            position: relative;
+            background: #ffffff;
+            min-height: 520px;
+          }
+          .cert-header {
+            text-align: center;
+            border-bottom: 2px solid #cbd5e1;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+            position: relative;
+          }
+          .logo-box {
+            position: absolute;
+            left: 0;
+            top: 0;
+          }
+          .qr-box {
+            position: absolute;
+            right: 0;
+            top: 0;
+            text-align: center;
+          }
+          .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin: 0;
+            color: #0f172a;
+          }
+          .company-sub {
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 4px;
+          }
+          .cert-title {
+            text-align: center;
+            font-size: 26px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: #1e3a8a;
+            margin: 20px 0 15px 0;
+          }
+          .cert-body {
+            text-align: center;
+            font-size: 15px;
+            line-height: 1.8;
+            color: #334155;
+          }
+          .student-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #0f172a;
+            text-decoration: underline;
+            text-underline-offset: 6px;
+            margin: 10px 0;
+            font-family: 'Georgia', serif;
+          }
+          .course-box {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0f172a;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 8px 16px;
+            display: inline-block;
+            border-radius: 4px;
+            margin: 10px 0;
+          }
+          .cert-footer {
+            margin-top: 40px;
+            display: table;
+            width: 100%;
+          }
+          .footer-col {
+            display: table-cell;
+            width: 50%;
+            vertical-align: top;
+            text-align: center;
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 12px;
+          }
+          .sign-line {
+            margin-top: 50px;
+            font-weight: bold;
+            color: #0f172a;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="certificate-container">
+          <div class="cert-header">
+            <div class="logo-box">
+              <img src="logo.png" alt="LSS" style="width: 75px; height: auto;" onerror="this.src='https://via.placeholder.com/75x75?text=LSS';">
+            </div>
+            <h1 class="company-name">LIVING STONE SERVICE</h1>
+            <div class="company-sub">
+              Centre Technique & Pôle Formation Professionnelle IT<br>
+              Ouagadougou, Burkina Faso | Tél : +226 70 00 00 00 / 64 07 78 64<br>
+              IFU : 00320159Z — RCCM : BF-OUA-01-2026-A10-13450
+            </div>
+            <div class="qr-box">
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${qrData}" style="width: 75px; height: 75px; border: 1px solid #cbd5e1; padding: 2px; background: #fff;" alt="QR Authentification">
+              <div style="font-family: 'Segoe UI', sans-serif; font-size: 8px; color: #64748b; margin-top: 2px;">VÉRIFICATION OFFICIELLE</div>
+            </div>
+          </div>
+
+          <div class="cert-title">Attestation de Formation</div>
+
+          <div class="cert-body">
+            Il est attesté par la présente que :
+            <div class="student-name">${student.fullName}</div>
+            Matricule : <strong>${student.id}</strong><br>
+            A suivi et validé avec succès le programme de formation pratique en :
+            <br>
+            <div class="course-box">${student.courseTitle || student.track || student.filiere || 'Initiation en Maintenance Informatique'}</div>
+            <br>
+            Période : <strong>${student.period || (student.startDate && student.endDate ? 'Du ' + student.startDate + ' au ' + student.endDate : '2026')}</strong> — Encadrement assuré par <strong>${student.mentor || 'ZABRE S. Constantin'}</strong>
+          </div>
+
+          <div class="cert-footer">
+            <div class="footer-col">
+              Fait à Ouagadougou, le ${new Date().toLocaleDateString('fr-FR')}<br>
+              <span style="color: #64748b;">Réf : CERT-${student.id}</span>
+            </div>
+            <div class="footer-col">
+              <strong>Le Directeur / Formateur Principal</strong>
+              <div class="sign-line">${student.mentor || 'ZABRE S. Constantin'}</div>
+              <div style="font-size: 10px; color: #64748b;">Cachet & Signature</div>
+            </div>
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() { window.print(); };
+        <\/script>
+      </body>
+      </html>
+    `;
+
+    printWin.document.open();
+    printWin.document.write(htmlContent);
+    printWin.document.close();
   }
 
   getDefaultSkillsForTrack(track) {
