@@ -2142,116 +2142,175 @@ class LSSApp {
   // OFFICIAL A4 PRINTING ENGINE (DGI & LSS COMPLIANCE)
   // =========================================================================
 
+  // IMPRESSION REÇU TICKET A4 AVEC QR CODE
   printTicketReceipt(ticketId) {
-    const t = this.db.tickets.find(tk => tk.id === ticketId);
-    if (!t) return;
-    const s = this.db.settings;
+    const ticket = (this.db && Array.isArray(this.db.tickets)) 
+      ? this.db.tickets.find(t => t.id === ticketId) 
+      : null;
 
-    const printHtml = `
-      <div style="font-family: 'Plus Jakarta Sans', Arial, sans-serif; color: #0f172a;">
-        <div class="cert-top-grid" style="border-bottom: 2px solid #109e2b; padding-bottom: 14px; margin-bottom: 20px;">
-          <div class="cert-left-meta">
-            <strong style="color: #0252df; font-size: 13px;">${s.companyName}</strong><br>
-            Entreprise Individuelle<br>
-            BP : ${s.poBox || '06 BV 30379 Ouaga Zogona 10020 OUAGADOUGOU'}<br>
-            N° IFU : ${s.ifu} (du ${s.ifuDate || '2026-07-20'})<br>
-            N° RCCM : ${s.rccm} (du ${s.rccmDate || '2026-07-17'})
+    if (!ticket) {
+      alert("Ticket introuvable !");
+      return;
+    }
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      alert("Veuillez autoriser les pop-ups dans votre navigateur.");
+      return;
+    }
+
+    // Données encodées dans le QR Code
+    const qrData = encodeURIComponent(
+      `LIVING STONE SERVICE\n` +
+      `Ticket N°: ${ticket.id}\n` +
+      `Date: ${ticket.dateReceived || ticket.dateIn || ''}\n` +
+      `Client: ${ticket.clientName}\n` +
+      `Appareil: ${ticket.deviceModel}\n` +
+      `Montant: ${ticket.costTTC || 0} FCFA\n` +
+      `Statut: ${ticket.status}\n` +
+      `IFU: 00320159Z`
+    );
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head>
+        <meta charset="UTF-8">
+        <title>Reçu Ticket - ${ticket.id}</title>
+        <style>
+          @page { size: A4 portrait; margin: 15mm; }
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #0f172a;
+            margin: 0;
+            padding: 20px;
+            font-size: 13px;
+            background: #fff;
+          }
+          .header-table { width: 100%; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 20px; }
+          .company-title { font-size: 20px; font-weight: 800; text-transform: uppercase; margin: 0; }
+          .company-subtitle { font-size: 11px; color: #475569; margin-top: 4px; }
+          .badge-title {
+            background: #0f172a;
+            color: #fff;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 700;
+            display: inline-block;
+            border-radius: 4px;
+            text-transform: uppercase;
+          }
+          .grid-2 { display: table; width: 100%; margin-bottom: 20px; }
+          .col-left { display: table-cell; width: 50%; vertical-align: top; padding-right: 15px; }
+          .col-right { display: table-cell; width: 50%; vertical-align: top; padding-left: 15px; }
+          .box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+          }
+          .box-title { font-weight: 700; font-size: 12px; text-transform: uppercase; color: #334155; margin-bottom: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; }
+          .info-row { margin-bottom: 6px; font-size: 12px; }
+          .info-label { font-weight: 600; color: #475569; }
+          .table-data { width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 20px; }
+          .table-data th, .table-data td { border: 1px solid #cbd5e1; padding: 9px 12px; text-align: left; }
+          .table-data th { background: #f1f5f9; font-size: 12px; }
+          .signatures { margin-top: 40px; display: table; width: 100%; }
+          .sign-col { display: table-cell; width: 50%; text-align: center; }
+          .sign-box { margin-top: 50px; font-size: 11px; color: #64748b; }
+        </style>
+      </head>
+      <body>
+        <table class="header-table">
+          <tr>
+            <td style="width: 80px; vertical-align: middle; padding-right: 15px;">
+              <img src="logo.png" alt="Logo LSS" style="width: 75px; height: auto; border-radius: 4px;" onerror="this.src='https://via.placeholder.com/75x75?text=LSS';">
+            </td>
+            <td style="vertical-align: middle;">
+              <h1 class="company-title">LIVING STONE SERVICE</h1>
+              <div class="company-subtitle">
+                Expertise Maintenance Électronique, Micro-soudure & Réseaux<br>
+                Ouagadougou, Burkina Faso | Tél : +226 70 00 00 00 / 64 07 78 64<br>
+                N° IFU : 00320159Z — RCCM : BF-OUA-01-2026-A10-13450
+              </div>
+            </td>
+            <td style="text-align: right; vertical-align: top; width: 140px;">
+              <div class="badge-title">REÇU DÉPÔT / RETRAIT</div>
+              <div style="font-size: 12px; font-weight: 700; margin-top: 6px;">${ticket.id}</div>
+              
+              <!-- QR Code Généré Dynamiquement -->
+              <div style="margin-top: 8px;">
+                <img 
+                  src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${qrData}" 
+                  alt="QR Code" 
+                  style="width: 80px; height: 80px; border: 1px solid #cbd5e1; padding: 2px; border-radius: 4px; background: #fff;"
+                />
+                <div style="font-size: 9px; color: #64748b; margin-top: 2px;">SCAN D'AUTHENTICITÉ</div>
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <div class="grid-2">
+          <div class="col-left">
+            <div class="box">
+              <div class="box-title">Informations Client</div>
+              <div class="info-row"><span class="info-label">Nom / Client :</span> <strong>${ticket.clientName}</strong></div>
+              <div class="info-row"><span class="info-label">Téléphone :</span> ${ticket.clientPhone || 'Non spécifié'}</div>
+              <div class="info-row"><span class="info-label">Date d'entrée :</span> ${ticket.dateReceived || ticket.dateIn || new Date().toLocaleDateString('fr-FR')}</div>
+            </div>
           </div>
-          <div class="cert-center-logo">
-            <img src="logo.png" alt="LSS Logo" style="height: 65px; width: auto;">
-          </div>
-          <div class="cert-right-meta">
-            <strong style="color: #109e2b; font-size: 13px;">MAINTENANCE & VENTES</strong><br>
-            Ouagadougou, Burkina Faso<br>
-            Tél : ${s.phone || '(+226) 70 00 00 00 / (+226) 76 00 00 00'}<br>
-            <a href="mailto:${s.email || 'contactlivingstoneservice@gmail.com'}" style="color: #0252df; text-decoration: none;">${s.email || 'contactlivingstoneservice@gmail.com'}</a>
+          <div class="col-right">
+            <div class="box">
+              <div class="box-title">Détails Équipement & Diagnostic</div>
+              <div class="info-row"><span class="info-label">Appareil :</span> <strong>${ticket.deviceModel}</strong></div>
+              <div class="info-row"><span class="info-label">Symptôme / Panne :</span> ${ticket.problemDesc || ticket.issueDesc || ticket.issue || 'Diagnostic en cours'}</div>
+              <div class="info-row"><span class="info-label">Statut Actuel :</span> <strong>${ticket.status}</strong></div>
+            </div>
           </div>
         </div>
 
-        <h2 style="font-size: 18pt; font-weight: 900; color: #0252df; text-transform: uppercase; text-align: center; margin-bottom: 4px; letter-spacing: 0.5px;">
-          REÇU DE DÉPÔT & DE MAINTENANCE IT
-        </h2>
-        <div style="font-size: 12pt; font-weight: 800; color: #f37021; text-align: center; margin-bottom: 20px;">
-          Ticket N° ${t.id} — Date de Dépôt: ${t.dateReceived}
-        </div>
-
-        <div class="print-meta-grid" style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
-          <div>
-            <strong style="color: #0252df;">INFORMATIONS CLIENT:</strong><br>
-            Nom / Raison Sociale: <strong>${t.clientName}</strong><br>
-            Téléphone WhatsApp: ${t.clientPhone}
-          </div>
-          <div>
-            <strong style="color: #0252df;">DÉTAILS ÉQUIPEMENT DÉPOSÉ:</strong><br>
-            Modèle Appareil: <strong>${t.deviceModel}</strong><br>
-            N° Série: ${t.serialNumber || 'N/A'}<br>
-            Accessoires Déposés: ${t.accessories || 'Aucun'}
-          </div>
-        </div>
-
-        <div style="margin-bottom: 20px;">
-          <strong style="color: #0f172a;">DIAGNOSTIC INITIAL & PANNE SIGNALÉE:</strong>
-          <p style="background: #f1f5f9; border-left: 4px solid #f37021; padding: 12px; border-radius: 4px; font-size: 10.5pt; margin-top: 6px; color: #334155;">
-            ${t.problemDesc}
-          </p>
-        </div>
-
-        <table class="print-table">
+        <table class="table-data">
           <thead>
             <tr>
-              <th style="background: #0252df; color: #ffffff; padding: 10px;">Désignation Prestation / Réparation</th>
-              <th style="background: #0252df; color: #ffffff; padding: 10px; text-align: right;">Montant HT</th>
-              <th style="background: #0252df; color: #ffffff; padding: 10px; text-align: right;">TVA (18%)</th>
-              <th style="background: #0252df; color: #ffffff; padding: 10px; text-align: right;">Total TTC</th>
+              <th>Description de la Réparation / Prestation</th>
+              <th style="width: 120px;">Statut</th>
+              <th style="text-align: right; width: 140px;">Montant Total TTC</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>Main d'œuvre, Diagnostic & Maintenance IT (Statut: <strong>${t.status}</strong>)</td>
-              <td style="text-align: right;">${this.formatFCFA(t.costHT)}</td>
-              <td style="text-align: right;">${this.formatFCFA(t.vat18)}</td>
-              <td style="text-align: right;"><strong>${this.formatFCFA(t.costTTC)}</strong></td>
+              <td>
+                <strong>Intervention Technique & Main-d'œuvre</strong><br>
+                <span style="font-size: 11px; color: #64748b;">Diagnostic, remise en état électronique et tests de stabilité</span>
+              </td>
+              <td>${ticket.status}</td>
+              <td style="text-align: right; font-weight: 800; font-size: 14px;">${this.formatFCFA(ticket.costTTC || 0)}</td>
             </tr>
           </tbody>
         </table>
 
-        <div class="print-totals" style="width: 300px; margin-left: auto; border: 1px solid #cbd5e1; padding: 14px; border-radius: 8px; margin-bottom: 30px;">
-          <div class="print-totals-row"><span>Sous-total HT:</span> <span>${this.formatFCFA(t.costHT)}</span></div>
-          <div class="print-totals-row"><span>TVA (18% CGI):</span> <span>${this.formatFCFA(t.vat18)}</span></div>
-          <div class="print-totals-row grand-total" style="color: #0252df; border-top: 2px solid #0252df;"><span>Net à Payer TTC:</span> <span>${this.formatFCFA(t.costTTC)}</span></div>
-        </div>
-
-        <div class="print-signatures" style="margin-top: 40px;">
-          <div class="print-signature-box">Signature du Client</div>
-          <div class="print-signature-box">
-            <strong>LE PROMOTEUR LSS</strong><br>
-            <span style="color: #0252df; font-weight: 800;">${s.promoterName}</span><br>
-            <small style="color: #64748b;">(Cachet & Signature Officiels)</small>
+        <div class="signatures">
+          <div class="sign-col">
+            <strong>Pour l'Atelier LSS</strong><br>
+            <div class="sign-box">Signature & Cachet</div>
+          </div>
+          <div class="sign-col">
+            <strong>Le Client / Réceptionnaire</strong><br>
+            <div class="sign-box">Signature du Client</div>
           </div>
         </div>
 
-        <!-- Bloc QR Code Officiel -->
-        <div style="text-align: center; margin-top: 15px; margin-bottom: 5px;">
-          <img 
-            src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent('LIVING STONE SERVICE\nDoc: ' + t.id + '\nClient: ' + t.clientName + '\nTotal: ' + t.costTTC + ' FCFA\nStatut: ' + t.status)}" 
-            alt="QR Code Authentification" 
-            style="width: 85px; height: 85px; border: 1px solid #cbd5e1; padding: 3px; border-radius: 4px; background: #fff;"
-          />
-          <div style="font-size: 9px; color: #64748b; margin-top: 2px; text-transform: uppercase; font-weight: 600;">Authenticité LSS</div>
-        </div>
-
-        <div style="margin-top: 20px; padding-top: 10px; border-top: 1px dashed #cbd5e1; text-align: center; font-size: 8.5pt; color: #64748b;">
-          <div style="font-weight: 700; color: #0252df; font-style: italic; margin-bottom: 2px;">
-            « ${s.motto || "L'Excellence & la Qualité au Service de l'Innovation IT"} »
-          </div>
-          <div>
-            ${s.companyName} — IFU: ${s.ifu} — RCCM: ${s.rccm} — BP: ${s.poBox || '06 BV 30379 Ouaga Zogona 10020 OUAGADOUGOU'}
-          </div>
-        </div>
-      </div>
+        <script>
+          window.onload = function() { window.print(); };
+        <\/script>
+      </body>
+      </html>
     `;
 
-    this.preparePortraitPrint(printHtml);
+    printWin.document.open();
+    printWin.document.write(htmlContent);
+    printWin.document.close();
   }
 
   preparePortraitPrint(printHtml) {
