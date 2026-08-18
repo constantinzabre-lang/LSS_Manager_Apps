@@ -1070,41 +1070,45 @@ class LSSApp {
         <style>
           @page {
             size: A4 portrait;
-            margin: 10mm;
+            margin: 6mm 8mm;
           }
           * {
             box-sizing: border-box;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            color: #0f172a;
+          html, body {
             margin: 0;
-            padding: 10px;
+            padding: 0;
             background: #fff;
-            font-size: 13px;
+            color: #0f172a;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 12px;
           }
           .cert-container {
             border: 2px solid #0284c7;
-            padding: 24px 28px;
-            min-height: 960px;
-            position: relative;
+            padding: 16px 22px 12px 22px;
             background: #ffffff;
+            box-sizing: border-box;
+            width: 100%;
+            page-break-inside: avoid;
+            break-inside: avoid;
           }
           .header-table {
             width: 100%;
             border-bottom: 2px solid #0284c7;
-            padding-bottom: 15px;
-            margin-bottom: 25px;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
           }
           .header-left {
             width: 38%;
             vertical-align: middle;
-            font-size: 11px;
-            line-height: 1.4;
+            font-size: 10px;
+            line-height: 1.3;
             color: #334155;
           }
           .header-left strong {
-            font-size: 13px;
+            font-size: 11.5px;
             color: #0f172a;
           }
           .header-center {
@@ -1116,109 +1120,106 @@ class LSSApp {
             width: 38%;
             text-align: right;
             vertical-align: middle;
-            font-size: 11px;
-            line-height: 1.4;
+            font-size: 10px;
+            line-height: 1.3;
             color: #334155;
           }
           .header-right strong {
-            font-size: 12px;
+            font-size: 11px;
             color: #0284c7;
-            letter-spacing: 0.5px;
           }
           .cert-title {
             text-align: center;
-            font-size: 20px;
+            font-size: 17px;
             font-weight: 800;
             color: #0369a1;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
             text-transform: uppercase;
-            margin-bottom: 4px;
+            margin: 0 0 2px 0;
           }
           .cert-ref {
             text-align: center;
-            font-size: 12px;
+            font-size: 10.5px;
             font-weight: 700;
             color: #475569;
-            margin-bottom: 25px;
+            margin-bottom: 10px;
           }
           .cert-intro {
             text-align: center;
-            font-size: 13px;
+            font-size: 11.5px;
             color: #334155;
-            margin-bottom: 12px;
+            margin-bottom: 6px;
           }
           .student-name {
             text-align: center;
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 800;
             color: #0f172a;
             letter-spacing: 1px;
             text-transform: uppercase;
-            margin: 10px 0;
-            padding-bottom: 4px;
+            margin: 4px 0 2px 0;
           }
           .dotted-line {
-            width: 180px;
-            margin: 0 auto 16px auto;
+            width: 150px;
+            margin: 0 auto 8px auto;
             border-bottom: 2px dashed #0284c7;
           }
           .course-container {
             text-align: center;
-            margin: 16px 0;
+            margin: 6px 0;
           }
           .course-pill {
             display: inline-block;
             background: #f0f9ff;
             border: 1.5px solid #0284c7;
             color: #0369a1;
-            padding: 8px 24px;
-            border-radius: 20px;
-            font-size: 14px;
+            padding: 5px 16px;
+            border-radius: 16px;
+            font-size: 12px;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
           }
           .period-text {
             text-align: center;
-            font-size: 13px;
+            font-size: 11.5px;
             color: #334155;
-            margin-bottom: 25px;
+            margin: 6px 0 10px 0;
           }
           .skills-box {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 16px 20px;
-            margin-bottom: 30px;
+            border-radius: 6px;
+            padding: 10px 14px;
+            margin-bottom: 10px;
           }
           .skills-title {
             font-weight: 700;
-            font-size: 13px;
+            font-size: 11.5px;
             color: #0f172a;
-            margin-bottom: 10px;
+            margin-bottom: 4px;
           }
           .skills-list {
             margin: 0;
-            padding-left: 20px;
+            padding-left: 16px;
             color: #334155;
-            font-size: 12.5px;
-            line-height: 1.6;
+            font-size: 11px;
+            line-height: 1.45;
           }
           .legal-mention {
             text-align: center;
             font-style: italic;
-            font-size: 12px;
+            font-size: 10.5px;
             color: #475569;
-            margin-bottom: 40px;
+            margin-bottom: 12px;
           }
           .footer-table {
             width: 100%;
-            margin-top: 20px;
+            margin-bottom: 6px;
           }
           .footer-date {
             width: 50%;
             vertical-align: top;
-            font-size: 12px;
+            font-size: 11px;
             color: #334155;
           }
           .footer-signature {
@@ -1227,30 +1228,29 @@ class LSSApp {
             vertical-align: top;
           }
           .footer-signature .role {
-            font-size: 13px;
+            font-size: 11.5px;
             font-weight: 800;
             color: #0f172a;
             text-transform: uppercase;
           }
           .footer-signature .name {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 700;
             color: #0369a1;
-            margin-top: 35px;
+            margin-top: 24px;
           }
           .footer-signature .sub {
-            font-size: 11px;
+            font-size: 9.5px;
             color: #64748b;
           }
           .motto {
             text-align: center;
-            font-size: 11px;
+            font-size: 9.5px;
             font-style: italic;
             color: #0284c7;
-            position: absolute;
-            bottom: 15px;
-            left: 0;
-            right: 0;
+            margin-top: 6px;
+            padding-top: 4px;
+            border-top: 1px solid #e2e8f0;
           }
           @media print {
             body { padding: 0; }
