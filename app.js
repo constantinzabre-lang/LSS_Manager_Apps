@@ -1763,10 +1763,16 @@ class LSSApp {
             <td><span class="badge badge-purple">${e.category}</span></td>
             <td>${e.description}</td>
             <td><strong style="color: var(--accent-danger);">${this.formatFCFA(e.amount)}</strong></td>
-            <td>${e.paymentMethod}</td>
+            <td>${e.paymentMethod || 'Espèces'}</td>
+            <td>
+              <button class="btn btn-secondary btn-sm" onclick="app.printExpenseVoucher('${e.id}')">
+                <i data-lucide="printer"></i> Bon Décaissement
+              </button>
+            </td>
           </tr>
         `;
       });
+      if (window.lucide) window.lucide.createIcons();
     }
   }
 
@@ -2889,6 +2895,152 @@ class LSSApp {
       `Merci pour votre confiance !`
     );
     window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+  }
+
+  // IMPRESSION BON DE DÉCAISSEMENT / SORTIE DE CAISSE A4
+  printExpenseVoucher(expenseId) {
+    const exp = (this.db && Array.isArray(this.db.expenses))
+      ? this.db.expenses.find(e => e.id === expenseId)
+      : null;
+
+    if (!exp) {
+      alert("Dépense introuvable !");
+      return;
+    }
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      alert("Veuillez autoriser les pop-ups dans votre navigateur.");
+      return;
+    }
+
+    const qrData = encodeURIComponent(
+      `BON DE SORTIE DE CAISSE LSS\n` +
+      `Réf: ${exp.id}\n` +
+      `Date: ${exp.date || ''}\n` +
+      `Motif: ${exp.description}\n` +
+      `Catégorie: ${exp.category}\n` +
+      `Montant: ${exp.amount} FCFA\n` +
+      `Autorisé par: ZABRE S. Constantin`
+    );
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head>
+        <meta charset="UTF-8">
+        <title>Bon de Décaissement - ${exp.id}</title>
+        <style>
+          @page { size: A4 portrait; margin: 12mm 15mm; }
+          * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #0f172a;
+            margin: 0;
+            padding: 10px;
+            font-size: 13px;
+            background: #fff;
+          }
+          .voucher-container {
+            border: 2px solid #0f172a;
+            border-radius: 8px;
+            padding: 24px;
+            background: #ffffff;
+          }
+          .header-table { width: 100%; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 20px; }
+          .badge-voucher {
+            background: #dc2626; /* Rouge comptabilité pour décaissement */
+            color: #fff;
+            padding: 6px 14px;
+            font-size: 13px;
+            font-weight: 800;
+            text-transform: uppercase;
+            display: inline-block;
+            border-radius: 4px;
+          }
+          .box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.6;
+          }
+          .amount-highlight {
+            font-size: 20px;
+            font-weight: 900;
+            color: #dc2626;
+            background: #fef2f2;
+            border: 1.5px solid #fecaca;
+            padding: 8px 16px;
+            border-radius: 6px;
+            display: inline-block;
+            margin: 10px 0;
+          }
+          .signatures { display: table; width: 100%; margin-top: 40px; }
+          .sign-col { display: table-cell; width: 50%; text-align: center; }
+          .sign-box { margin-top: 50px; font-size: 11px; color: #64748b; }
+        </style>
+      </head>
+      <body>
+        <div class="voucher-container">
+          <table class="header-table">
+            <tr>
+              <td style="width: 75px; vertical-align: middle; padding-right: 12px;">
+                <img src="logo.png" alt="Logo LSS" style="width: 70px; height: auto;" onerror="this.src='https://via.placeholder.com/70x70?text=LSS';">
+              </td>
+              <td style="vertical-align: middle;">
+                <h1 style="font-size: 20px; font-weight: 900; margin: 0; text-transform: uppercase;">LIVING STONE SERVICE</h1>
+                <div style="font-size: 11px; color: #475569; margin-top: 3px; line-height: 1.35;">
+                  Gestion de Trésorerie & Caisse Atelier<br>
+                  Ouagadougou, Burkina Faso | IFU : 00320159Z — RCCM : BF-OUA-01-2026-A10-13450
+                </div>
+              </td>
+              <td style="text-align: right; vertical-align: top; width: 140px;">
+                <div class="badge-voucher">BON DE DÉCAISSEMENT</div>
+                <div style="font-size: 12px; font-weight: 800; margin-top: 5px;">N° : ${exp.id}</div>
+                <div style="font-size: 11px; color: #64748b;">Date : ${exp.date || new Date().toLocaleDateString('fr-FR')}</div>
+                <div style="margin-top: 6px;">
+                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=75x75&data=${qrData}" style="width: 65px; height: 65px; border: 1px solid #cbd5e1; padding: 2px; background: #fff;" alt="QR Caisse">
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <div class="box">
+            <div><strong>Motif de la dépense :</strong> ${exp.description}</div>
+            <div><strong>Catégorie budgétaire :</strong> <span style="font-weight: 700; color: #0284c7;">${exp.category}</span></div>
+            <div><strong>Bénéficiaire / Fournisseur :</strong> ${exp.beneficiary || 'Fournisseur / Prestataire de service'}</div>
+            <div><strong>Montant décaissé :</strong></div>
+            <div class="amount-highlight">${this.formatFCFA(exp.amount)}</div>
+            <div style="font-size: 12px; color: #64748b;">Arrêté la présente sortie de caisse à la somme de : <strong>${this.formatFCFA(exp.amount)}</strong>.</div>
+          </div>
+
+          <div class="signatures">
+            <div class="sign-col">
+              <strong>Le Bénéficiaire / Demandeur</strong><br>
+              <span style="font-size: 10.5px; color: #64748b;">(Accusé de réception des fonds)</span>
+              <div class="sign-box">Nom, Date & Signature</div>
+            </div>
+            <div class="sign-col">
+              <strong>Autorisation Direction (LSS)</strong><br>
+              <span style="font-size: 10.5px; color: #64748b;">ZABRE S. Constantin</span>
+              <div class="sign-box">Signature & Cachet Caisse</div>
+            </div>
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() { window.print(); };
+        <\/script>
+      </body>
+      </html>
+    `;
+
+    printWin.document.open();
+    printWin.document.write(htmlContent);
+    printWin.document.close();
   }
 
   printCertificateA4(studentId) {
