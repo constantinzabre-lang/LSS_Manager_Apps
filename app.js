@@ -1070,7 +1070,7 @@ class LSSApp {
         <style>
           @page {
             size: A4 portrait;
-            margin: 10mm;
+            margin: 12mm 14mm 12mm 14mm;
           }
           * {
             box-sizing: border-box;
@@ -1078,33 +1078,35 @@ class LSSApp {
             print-color-adjust: exact;
           }
           html, body {
-            height: 100%;
             margin: 0;
             padding: 0;
             background: #fff;
             color: #0f172a;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            font-size: 13px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            font-size: 13.5px;
           }
-          /* Cadre plein format A4 bicolore (Bleu & Orange) */
+          
+          /* CADRE EXTÉRIEUR BICOLORE PLEINE HAUTEUR */
           .cert-container {
             border: 2.5px solid #0284c7;
             outline: 1.5px solid #ea580c;
             outline-offset: -5px;
-            padding: 24px 28px 18px 28px;
+            padding: 24px 30px 20px 30px;
             background: #ffffff;
-            height: 270mm; /* Occupe toute la hauteur de la feuille */
+            min-height: 258mm; /* Remplit précisément toute la feuille A4 */
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             page-break-inside: avoid;
             break-inside: avoid;
           }
+
+          /* EN-TÊTE */
           .header-table {
             width: 100%;
             border-bottom: 2px solid #0284c7;
             padding-bottom: 12px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
           }
           .header-left {
             width: 38%;
@@ -1114,7 +1116,7 @@ class LSSApp {
             color: #334155;
           }
           .header-left strong {
-            font-size: 12.5px;
+            font-size: 13px;
             color: #0f172a;
           }
           .header-center {
@@ -1131,42 +1133,44 @@ class LSSApp {
             color: #334155;
           }
           .header-right strong {
-            font-size: 12px;
+            font-size: 12.5px;
             color: #0284c7;
           }
+
+          /* TITRES ET INFORMATIONS PRINCIPALES */
           .cert-title {
             text-align: center;
-            font-size: 20px;
+            font-size: 21px;
             font-weight: 800;
             color: #0369a1;
-            letter-spacing: 0.5px;
+            letter-spacing: 1px;
             text-transform: uppercase;
-            margin: 6px 0 2px 0;
+            margin: 8px 0 2px 0;
           }
           .cert-ref {
             text-align: center;
-            font-size: 11.5px;
+            font-size: 12px;
             font-weight: 700;
             color: #475569;
-            margin-bottom: 14px;
+            margin-bottom: 15px;
           }
           .cert-intro {
             text-align: center;
-            font-size: 13px;
+            font-size: 13.5px;
             color: #334155;
             margin-bottom: 8px;
           }
           .student-name {
             text-align: center;
-            font-size: 24px;
+            font-size: 26px;
             font-weight: 800;
             color: #0f172a;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
-            margin: 8px 0 4px 0;
+            margin: 10px 0 4px 0;
           }
           .dotted-line {
-            width: 180px;
+            width: 200px;
             margin: 0 auto 12px auto;
             border-bottom: 2px dashed #0284c7;
           }
@@ -1177,55 +1181,61 @@ class LSSApp {
           .course-pill {
             display: inline-block;
             background: #f0f9ff;
-            border: 1.5px solid #0284c7;
+            border: 2px solid #0284c7;
             color: #0369a1;
-            padding: 8px 24px;
-            border-radius: 20px;
-            font-size: 13.5px;
+            padding: 9px 28px;
+            border-radius: 24px;
+            font-size: 14px;
             font-weight: 800;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
           }
           .period-text {
             text-align: center;
-            font-size: 13px;
+            font-size: 13.5px;
             color: #334155;
-            margin: 10px 0 16px 0;
+            margin: 12px 0 18px 0;
           }
+
+          /* ENCADRÉ DES COMPÉTENCES */
           .skills-box {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
-            padding: 14px 18px;
-            margin-bottom: 14px;
+            padding: 16px 22px;
+            margin-bottom: 15px;
           }
           .skills-title {
             font-weight: 700;
-            font-size: 12.5px;
+            font-size: 13px;
             color: #0f172a;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
           }
           .skills-list {
             margin: 0;
             padding-left: 20px;
             color: #334155;
-            font-size: 12px;
-            line-height: 1.6;
+            font-size: 12.5px;
+            line-height: 1.65;
           }
+
+          /* PIED DE PAGE & SIGNATURES */
           .legal-mention {
             text-align: center;
             font-style: italic;
-            font-size: 12px;
+            font-size: 12.5px;
             color: #475569;
-            margin: 10px 0 16px 0;
+            margin: 12px 0 20px 0;
           }
           .footer-table {
             width: 100%;
             margin-top: 10px;
+            margin-bottom: 10px;
           }
           .footer-date {
             width: 50%;
             vertical-align: top;
-            font-size: 12px;
+            font-size: 12.5px;
             color: #334155;
           }
           .footer-signature {
@@ -1234,29 +1244,31 @@ class LSSApp {
             vertical-align: top;
           }
           .footer-signature .role {
-            font-size: 12.5px;
+            font-size: 13px;
             font-weight: 800;
             color: #0f172a;
             text-transform: uppercase;
           }
           .footer-signature .name {
-            font-size: 13.5px;
+            font-size: 14px;
             font-weight: 700;
             color: #0369a1;
-            margin-top: 35px;
+            margin-top: 40px;
           }
           .footer-signature .sub {
             font-size: 11px;
             color: #64748b;
           }
+
+          /* LIGNE POINTILLÉE & DEVISE BAS DE PAGE */
           .motto-separator {
             width: 100%;
             border-bottom: 1px dashed #cbd5e1;
-            margin: 14px 0 6px 0;
+            margin: 15px 0 8px 0;
           }
           .motto {
             text-align: center;
-            font-size: 11px;
+            font-size: 11.5px;
             font-style: italic;
             color: #0369a1;
             font-weight: 500;
