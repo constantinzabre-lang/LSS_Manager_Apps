@@ -1425,7 +1425,8 @@ class LSSApp {
   saveStudent(e) {
     e.preventDefault();
     const stgId = document.getElementById('stg-id').value;
-    const rawSkills = document.getElementById('stg-skills').value || '';
+    const skillsEl = document.getElementById('student-skills') || document.getElementById('stg-skills');
+    const rawSkills = skillsEl ? skillsEl.value : '';
     const skillsArray = rawSkills.split('\n').map(s => s.trim()).filter(s => s.length > 0);
 
     if (stgId) {
