@@ -136,6 +136,10 @@
           <i data-lucide="users"></i>
           <span>Clients & CRM</span>
         </a>
+        <a href="javascript:void(0)" class="nav-item" onclick="app.navigate('debts')">
+          <i data-lucide="scale"></i>
+          <span>Dettes & Créances</span>
+        </a>
         <a href="javascript:void(0)" class="nav-item" onclick="app.navigate('settings')">
           <i data-lucide="settings"></i>
           <span>Paramètres & Sécurité</span>
@@ -542,6 +546,63 @@
                 </thead>
                 <tbody id="clients-tbody">
                   <!-- Dynamic Clients -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 11. DETTES & CRÉANCES VIEW -->
+        <section id="view-debts" class="view-section">
+          <!-- Summary Cards -->
+          <div class="kpi-grid" style="margin-bottom: 20px;">
+            <div class="kpi-card" style="border-left: 4px solid var(--accent-primary);">
+              <div class="kpi-title">Créances Totales (À Recouvrer)</div>
+              <div class="kpi-value" id="kpi-total-creances" style="color: #60a5fa;">0 FCFA</div>
+            </div>
+            <div class="kpi-card" style="border-left: 4px solid var(--accent-danger);">
+              <div class="kpi-title">Dettes Totales (À Payer)</div>
+              <div class="kpi-value" id="kpi-total-dettes" style="color: var(--accent-danger);">0 FCFA</div>
+            </div>
+            <div class="kpi-card" style="border-left: 4px solid var(--accent-success);">
+              <div class="kpi-title">Solde Net Recouvrement</div>
+              <div class="kpi-value" id="kpi-solde-debts" style="color: var(--accent-success);">0 FCFA</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header" style="flex-wrap: wrap; gap: 12px; justify-content: space-between;">
+              <!-- Tabs selector -->
+              <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn btn-primary" id="debt-tab-creance" onclick="app.switchDebtTab('creance')">
+                  <i data-lucide="arrow-down-left"></i> Créances (Clients qui me doivent)
+                </button>
+                <button type="button" class="btn btn-secondary" id="debt-tab-dette" onclick="app.switchDebtTab('dette')">
+                  <i data-lucide="arrow-up-right"></i> Dettes (Ce que je dois)
+                </button>
+              </div>
+              <button class="btn btn-success" onclick="app.openModal('modal-debt')">
+                <i data-lucide="plus-circle"></i> NOUVELLE ENTRÉE
+              </button>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Tiers / Contact</th>
+                    <th>Motif</th>
+                    <th style="text-align: right;">Total TTC</th>
+                    <th style="text-align: right;">Payé</th>
+                    <th style="text-align: right;">Reste à Payer</th>
+                    <th>Date Échéance</th>
+                    <th style="text-align: center;">Statut</th>
+                    <th style="text-align: center;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="debts-tbody">
+                  <!-- Dynamic Rows -->
                 </tbody>
               </table>
             </div>
@@ -1152,6 +1213,68 @@
           </button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL ENREGISTREMENT DETTE / CRÉANCE -->
+  <div class="modal-overlay" id="modal-debt">
+    <div class="modal-card" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-debt-title">Nouvelle Opération Dette / Créance</h3>
+        <button class="modal-close" onclick="app.closeModal('modal-debt')">&times;</button>
+      </div>
+      <form onsubmit="app.saveDebt(event)">
+        <input type="hidden" id="debt-form-id">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Type d'Opération</label>
+            <select class="form-control" id="debt-type" required>
+              <option value="creance">Créance (Client me doit de l'argent)</option>
+              <option value="dette">Dette (Je dois de l'argent au fournisseur/tiers)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date d'Opération</label>
+            <input type="date" class="form-control" id="debt-date" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nom du Tiers (Client / Fournisseur)</label>
+            <input type="text" class="form-control" id="debt-tiers" placeholder="Ex: M. Traoré ou Grossiste Info" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Numéro Téléphone / WhatsApp</label>
+            <input type="text" class="form-control" id="debt-tel" placeholder="+226 70 00 00 00">
+          </div>
+          <div class="form-group" style="grid-column: span 2;">
+            <label class="form-label">Motif / Libellé de l'Opération</label>
+            <textarea class="form-control" id="debt-motif" rows="2" placeholder="Ex: Réparation écran laptop, achat stock RAM..." required></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Montant Total (FCFA)</label>
+            <input type="number" class="form-control" id="debt-total" min="0" placeholder="0" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Montant Déjà Payé / Acompte (FCFA)</label>
+            <input type="number" class="form-control" id="debt-paye" min="0" placeholder="0" value="0" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date d'Échéance (Limite de Paiement)</label>
+            <input type="date" class="form-control" id="debt-echeance">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Statut du Paiement</label>
+            <select class="form-control" id="debt-statut">
+              <option value="en_cours">En cours (Non solde)</option>
+              <option value="solde">Soldé (Entièrement payé)</option>
+              <option value="en_retard">En retard de paiement</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('modal-debt')">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer l'Opération</button>
+        </div>
+      </form>
     </div>
   </div>
 

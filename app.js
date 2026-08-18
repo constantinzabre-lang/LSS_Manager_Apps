@@ -105,6 +105,10 @@ const defaultDatabase = {
     { id: 'DEP-2026-001', category: 'SONABEL / ONEA', description: 'Facture Électricité Atelier Mois de Juillet', amount: 35000, date: '2026-08-02', paymentMethod: 'Mobile Money' },
     { id: 'DEP-2026-002', category: 'Internet / Telecom', description: 'Abonnement Fibre Optique Atelier', amount: 25000, date: '2026-08-05', paymentMethod: 'Espèces' }
   ],
+  debts: [
+    { id: 'DET-001', type: 'creance', date: '2026-08-18', tiers: 'M. Traoré', tel: '+22670000000', motif: 'Réparation écran HP EliteBook', total: 45000, paye: 20000, echeance: '2026-08-30', statut: 'en_cours' },
+    { id: 'DET-002', type: 'dette', date: '2026-08-15', tiers: 'Grossiste Info Ouaga', tel: '+22676000000', motif: 'Achat connecteurs & RAM DDR4', total: 100000, paye: 60000, echeance: '2026-09-05', statut: 'en_cours' }
+  ],
   logs: [
     { timestamp: new Date().toISOString(), action: 'Initialisation du Système LSS', userName: 'ZABRE S. Constantin' }
   ]
@@ -118,6 +122,7 @@ class LSSApp {
     this.lastSyncError = null;
     this.db = this.loadDatabase();
     this.currentView = 'dashboard';
+    this.activeDebtTab = 'creance';
     this.enteredPin = '';
     this.posCart = [];
     this.isAdminAuthenticated = true;
@@ -140,7 +145,8 @@ class LSSApp {
       const envKey = (typeof window !== 'undefined' && window.ENV_SUPABASE_KEY) ? window.ENV_SUPABASE_KEY : '';
       if (!settings.supabaseUrl) settings.supabaseUrl = envUrl || DEFAULT_SUPABASE_URL;
       if (!settings.supabaseKey) settings.supabaseKey = envKey || DEFAULT_SUPABASE_KEY;
-      return { ...defaultDatabase, ...parsed, settings };
+      const debts = parsed.debts && Array.isArray(parsed.debts) ? parsed.debts : defaultDatabase.debts;
+      return { ...defaultDatabase, ...parsed, settings, debts };
     } catch (e) {
       console.error('Database parse error, resetting to default', e);
       return defaultDatabase;
@@ -340,6 +346,7 @@ class LSSApp {
       expenses: "Dépenses & Charges Atelier",
       reports: "Rapports & Bilans Financiers DGI",
       clients: "Clients & Gestion CRM",
+      debts: "Gestion des Dettes & Créances Tiers",
       settings: "Paramètres & Sécurité"
     };
     this.setText('current-page-title', titles[viewName] || "LSS Manager");
@@ -399,6 +406,9 @@ class LSSApp {
         break;
       case 'clients':
         this.renderClients();
+        break;
+      case 'debts':
+        this.renderDebts();
         break;
     }
   }
@@ -1267,6 +1277,191 @@ class LSSApp {
     this.saveDatabase();
     this.closeModal('modal-client');
     this.renderClients();
+  }
+
+  // 10. DETTES & CRÉANCES MANAGEMENT
+  switchDebtTab(tab) {
+    this.activeDebtTab = tab;
+    const btnCreance = document.getElementById('debt-tab-creance');
+    const btnDette = document.getElementById('debt-tab-dette');
+    if (btnCreance && btnDette) {
+      if (tab === 'creance') {
+        btnCreance.className = 'btn btn-primary';
+        btnDette.className = 'btn btn-secondary';
+      } else {
+        btnCreance.className = 'btn btn-secondary';
+        btnDette.className = 'btn btn-danger';
+      }
+    }
+    this.renderDebts();
+  }
+
+  renderDebts() {
+    if (!this.db.debts) this.db.debts = [];
+
+    // Calculate Financial KPIs for Debts/Receivables
+    let totalCreancesReste = 0;
+    let totalDettesReste = 0;
+
+    this.db.debts.forEach(d => {
+      const reste = Math.max(0, Number(d.total || 0) - Number(d.paye || 0));
+      if (d.type === 'creance') {
+        totalCreancesReste += reste;
+      } else if (d.type === 'dette') {
+        totalDettesReste += reste;
+      }
+    });
+
+    let soldeNet = totalCreancesReste - totalDettesReste;
+
+    this.setText('kpi-total-creances', this.formatFCFA(totalCreancesReste));
+    this.setText('kpi-total-dettes', this.formatFCFA(totalDettesReste));
+    this.setText('kpi-solde-debts', this.formatFCFA(soldeNet));
+
+    const tbody = document.getElementById('debts-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const currentTab = this.activeDebtTab || 'creance';
+    const filtered = this.db.debts.filter(d => (d.type || 'creance') === currentTab);
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">Aucune ${currentTab === 'creance' ? 'créance client' : 'dette fournisseur'} enregistrée.</td></tr>`;
+      return;
+    }
+
+    filtered.forEach(d => {
+      const total = Number(d.total || 0);
+      const paye = Number(d.paye || 0);
+      const reste = Math.max(0, total - paye);
+
+      let statutBadge = '<span class="badge badge-warning">En cours</span>';
+      if (d.statut === 'solde' || reste === 0) {
+        statutBadge = '<span class="badge badge-success">Soldé</span>';
+      } else if (d.statut === 'en_retard') {
+        statutBadge = '<span class="badge badge-danger">En retard</span>';
+      }
+
+      const waPhone = (d.tel || '').replace(/[^0-9]/g, '');
+      const waMsg = encodeURIComponent(`Bonjour ${d.tiers}, Living Stone Service vous rappelle la situation de compte (${d.motif}) : Reste à régler : ${this.formatFCFA(reste)} FCFA. Échéance : ${d.echeance || 'N/A'}. Merci !`);
+      const waLink = waPhone ? `https://wa.me/${waPhone}?text=${waMsg}` : '#';
+
+      tbody.innerHTML += `
+        <tr>
+          <td>${d.date || 'N/A'}</td>
+          <td><strong>${d.tiers}</strong><br><small style="color: var(--text-muted);">${d.tel || 'Aucun tél'}</small></td>
+          <td>${d.motif}</td>
+          <td style="text-align: right;"><strong>${this.formatFCFA(total)}</strong></td>
+          <td style="text-align: right; color: var(--accent-success);">${this.formatFCFA(paye)}</td>
+          <td style="text-align: right; color: var(--accent-danger); font-weight: 800;">${this.formatFCFA(reste)}</td>
+          <td>${d.echeance || 'N/A'}</td>
+          <td style="text-align: center;">${statutBadge}</td>
+          <td style="text-align: center;">
+            <div style="display: flex; gap: 4px; justify-content: center;">
+              ${reste > 0 ? `<button class="btn btn-success btn-sm" title="Marquer comme Soldé" onclick="app.settleDebt('${d.id}')"><i data-lucide="check-circle"></i> Soldé</button>` : ''}
+              <button class="btn btn-secondary btn-sm" title="Modifier" onclick="app.editDebt('${d.id}')"><i data-lucide="edit-3"></i></button>
+              ${waPhone ? `<a href="${waLink}" target="_blank" class="btn btn-success btn-sm" title="Relancer sur WhatsApp"><i data-lucide="message-square"></i></a>` : ''}
+              <button class="btn btn-danger btn-sm" title="Supprimer" onclick="app.deleteDebt('${d.id}')"><i data-lucide="trash-2"></i></button>
+            </div>
+          </td>
+        </tr>
+      `;
+    });
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  saveDebt(e) {
+    e.preventDefault();
+    const id = document.getElementById('debt-form-id').value;
+    const type = document.getElementById('debt-type').value;
+    const date = document.getElementById('debt-date').value || new Date().toISOString().split('T')[0];
+    const tiers = document.getElementById('debt-tiers').value;
+    const tel = document.getElementById('debt-tel').value || '';
+    const motif = document.getElementById('debt-motif').value;
+    const total = Number(document.getElementById('debt-total').value || 0);
+    const paye = Number(document.getElementById('debt-paye').value || 0);
+    const echeance = document.getElementById('debt-echeance').value || '';
+    let statut = document.getElementById('debt-statut').value;
+
+    if (paye >= total && total > 0) {
+      statut = 'solde';
+    }
+
+    if (id) {
+      const debt = this.db.debts.find(d => d.id === id);
+      if (debt) {
+        debt.type = type;
+        debt.date = date;
+        debt.tiers = tiers;
+        debt.tel = tel;
+        debt.motif = motif;
+        debt.total = total;
+        debt.paye = paye;
+        debt.echeance = echeance;
+        debt.statut = statut;
+      }
+    } else {
+      const newDebt = {
+        id: `DET-${String(this.db.debts.length + 1).padStart(3, '0')}`,
+        type,
+        date,
+        tiers,
+        tel,
+        motif,
+        total,
+        paye,
+        echeance,
+        statut
+      };
+      this.db.debts.unshift(newDebt);
+    }
+
+    this.setVal('debt-form-id', '');
+    this.saveDatabase();
+    this.closeModal('modal-debt');
+    this.activeDebtTab = type;
+    this.switchDebtTab(type);
+  }
+
+  editDebt(id) {
+    const d = this.db.debts.find(item => item.id === id);
+    if (!d) return;
+    this.setVal('debt-form-id', d.id);
+    this.setVal('debt-type', d.type);
+    this.setVal('debt-date', d.date);
+    this.setVal('debt-tiers', d.tiers);
+    this.setVal('debt-tel', d.tel);
+    this.setVal('debt-motif', d.motif);
+    this.setVal('debt-total', d.total);
+    this.setVal('debt-paye', d.paye);
+    this.setVal('debt-echeance', d.echeance);
+    this.setVal('debt-statut', d.statut);
+    
+    this.openModal('modal-debt');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  settleDebt(id) {
+    const d = this.db.debts.find(item => item.id === id);
+    if (!d) return;
+    if (confirm(`Confirmez-vous le solde complet de cette opération pour ${d.tiers} (${this.formatFCFA(d.total)}) ?`)) {
+      d.paye = d.total;
+      d.statut = 'solde';
+      this.saveDatabase();
+      this.renderDebts();
+    }
+  }
+
+  deleteDebt(id) {
+    const idx = this.db.debts.findIndex(item => item.id === id);
+    if (idx !== -1) {
+      if (confirm('Voulez-vous vraiment supprimer cet enregistrement de dette / créance ?')) {
+        this.db.debts.splice(idx, 1);
+        this.saveDatabase();
+        this.renderDebts();
+      }
+    }
   }
 
   // 10. SETTINGS
