@@ -2424,6 +2424,58 @@ class LSSApp {
     alert('🧹 Purge effectuée avec succès ! La base de données est vierge et prête pour un nouvel enregistrement à partir du numéro 001.');
   }
 
+  mergeDatabases(localDb, cloudDb) {
+    if (!cloudDb) return localDb || defaultDatabase;
+    if (!localDb) return cloudDb || defaultDatabase;
+
+    const mergeArraysById = (localArr = [], cloudArr = []) => {
+      const map = new Map();
+      if (Array.isArray(cloudArr)) {
+        cloudArr.forEach(item => {
+          if (item && item.id) map.set(String(item.id), item);
+        });
+      }
+      if (Array.isArray(localArr)) {
+        localArr.forEach(item => {
+          if (item && item.id) {
+            const existing = map.get(String(item.id));
+            map.set(String(item.id), existing ? { ...existing, ...item } : item);
+          }
+        });
+      }
+      return Array.from(map.values());
+    };
+
+    const mergeCounters = (localC = {}, cloudC = {}) => {
+      const keys = new Set([...Object.keys(localC || {}), ...Object.keys(cloudC || {})]);
+      const res = {};
+      keys.forEach(k => {
+        res[k] = Math.max(Number(localC[k] || 0), Number(cloudC[k] || 0));
+      });
+      return res;
+    };
+
+    return {
+      ...defaultDatabase,
+      ...cloudDb,
+      ...localDb,
+      tickets: mergeArraysById(localDb.tickets, cloudDb.tickets),
+      invoices: mergeArraysById(localDb.invoices, cloudDb.invoices),
+      students: mergeArraysById(localDb.students, cloudDb.students),
+      expenses: mergeArraysById(localDb.expenses, cloudDb.expenses),
+      products: mergeArraysById(localDb.products, cloudDb.products),
+      projects: mergeArraysById(localDb.projects, cloudDb.projects),
+      debts: mergeArraysById(localDb.debts, cloudDb.debts),
+      clients: mergeArraysById(localDb.clients, cloudDb.clients),
+      counters: mergeCounters(localDb.counters, cloudDb.counters),
+      settings: {
+        ...defaultDatabase.settings,
+        ...(cloudDb.settings || {}),
+        ...(localDb.settings || {})
+      }
+    };
+  }
+
   async syncToSupabase() {
     let { supabaseUrl, supabaseKey } = this.db.settings;
     const envUrl = (typeof window !== 'undefined' && window.ENV_SUPABASE_URL) ? window.ENV_SUPABASE_URL : '';
@@ -2447,6 +2499,22 @@ class LSSApp {
     try {
       if (statusElem) statusElem.innerHTML = '<span class="status-dot" style="background: #eab308;"></span><span>Sync Cloud...</span>';
       
+      // Fusion préalable pour préserver les saisies du secrétariat et des autres postes
+      try {
+        const fetchRes = await fetch(`${supabaseUrl}/rest/v1/app_sync?id=eq.lss_main_db&select=data`, {
+          headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+        });
+        if (fetchRes.ok) {
+          const rows = await fetchRes.json();
+          if (rows && rows.length > 0 && rows[0].data) {
+            this.db = this.mergeDatabases(this.db, rows[0].data);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.db));
+          }
+        }
+      } catch (e) {
+        console.warn('[Pre-sync merge fetch warning]', e);
+      }
+
       const nowIso = new Date().toISOString();
       const payload = {
         id: 'lss_main_db',
@@ -2480,6 +2548,7 @@ class LSSApp {
       if (res.ok) {
         this.lastSyncError = null;
         this.lastCloudSyncTime = Date.now();
+        this.lastLocalUpdate = Date.now();
         if (statusElem) {
           statusElem.style.cursor = 'default';
           statusElem.onclick = null;
@@ -2546,34 +2615,16 @@ class LSSApp {
           const cloudDb = rows[0].data;
           const cloudUpdatedAt = rows[0].updated_at ? new Date(rows[0].updated_at).getTime() : 0;
 
-          if (!isManual && this.lastLocalUpdate && cloudUpdatedAt && cloudUpdatedAt <= this.lastLocalUpdate) {
-            const statusElem = document.getElementById('sync-status');
-            if (statusElem) {
-              statusElem.style.cursor = 'default';
-              statusElem.onclick = null;
-              statusElem.innerHTML = '<span class="status-dot" style="background: #22c55e;"></span><span>Cloud Synchro OK</span>';
-            }
-            return;
-          }
-
           const hasActiveModal = !!document.querySelector('.modal-overlay.active, .modal.active, [id$="-modal"][style*="flex"]');
           if (!isManual && hasActiveModal) {
             return;
           }
 
-          const currentSettings = { ...this.db.settings };
-          this.db = { 
-            ...defaultDatabase, 
-            ...cloudDb, 
-            settings: { 
-              ...defaultDatabase.settings, 
-              ...cloudDb.settings,
-              supabaseUrl: currentSettings.supabaseUrl || cloudDb.settings.supabaseUrl,
-              supabaseKey: currentSettings.supabaseKey || cloudDb.settings.supabaseKey
-            } 
-          };
+          // Fusion intelligente pour préserver TOUTES les données secrétariat et multi-postes
+          this.db = this.mergeDatabases(this.db, cloudDb);
           
           this.lastCloudSyncTime = cloudUpdatedAt || Date.now();
+          this.lastLocalUpdate = Date.now();
           localStorage.setItem(STORAGE_KEY, JSON.stringify(this.db));
           
           // Rafraîchissement immédiat de toutes les vues de l'application
