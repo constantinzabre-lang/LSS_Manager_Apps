@@ -1062,15 +1062,23 @@ class LSSApp {
         tbody.innerHTML += `
           <tr>
             <td><strong>${s.id}</strong></td>
-            <td>${s.fullName}<br><small style="color: var(--text-muted);">${s.phone}</small></td>
-            <td>${s.track}</td>
-            <td>${s.startDate} au ${s.endDate}</td>
-            <td>ZABRE S. Constantin</td>
-            <td><span class="badge badge-success">${s.status}</span></td>
+            <td>${s.fullName}<br><small style="color: var(--text-muted);">${s.phone || ''}</small></td>
+            <td>${s.courseTitle || s.filiere || s.track}</td>
+            <td>${s.startDate || s.periodStart || ''} au ${s.endDate || s.periodEnd || ''}</td>
+            <td>${s.promoterName || 'ZABRE S. Constantin'}</td>
+            <td><span class="badge badge-success">${s.status || 'Certifié'}</span></td>
             <td>
-              <button class="btn btn-secondary btn-sm" onclick="app.printStudentCertificate('${s.id}')">
-                <i data-lucide="award"></i> Attestation A4
-              </button>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn btn-warning btn-sm" onclick="app.openCertModal('${s.id}')" title="Aperçu & Modifier l'Attestation">
+                  <i data-lucide="file-edit"></i> Aperçu / Éditer
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="app.printStudentCertificate('${s.id}')" title="Imprimer Attestation A4">
+                  <i data-lucide="printer"></i> Imprimer A4
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="app.editStudent('${s.id}')" title="Modifier Fiche Stagiaire">
+                  <i data-lucide="edit-3"></i> Fiche
+                </button>
+              </div>
             </td>
           </tr>
         `;
@@ -1355,7 +1363,7 @@ class LSSApp {
             </table>
 
             <div class="cert-title">ATTESTATION DE FIN DE STAGE PRATIQUE</div>
-            <div class="cert-ref">ATT-LSS-2026-${student.id ? student.id.replace(/\D/g, '') || '2026001' : '2026001'}</div>
+            <div class="cert-ref">${student.certNumber || ('ATT-LSS-2026-' + (student.id ? student.id.replace(/\D/g, '') || '2026001' : '2026001'))}</div>
 
             <div class="cert-intro">
               Le Promoteur de l'Entreprise Individuelle <strong>LIVING STONE SERVICE (LSS)</strong> atteste que :
@@ -1369,11 +1377,11 @@ class LSSApp {
             </div>
 
             <div class="course-container">
-              <div class="course-pill">${student.courseTitle || student.filiere || 'INITIATION EN MAINTENANCE INFORMATIQUE'}</div>
+              <div class="course-pill">${student.courseTitle || student.filiere || student.track || 'INITIATION EN MAINTENANCE INFORMATIQUE'}</div>
             </div>
 
             <div class="period-text">
-              effectué dans nos ateliers à Ouagadougou du <strong>${student.periodStart || '2026-06-01'}</strong> au <strong>${student.periodEnd || '2026-08-01'}</strong>.
+              effectué dans nos ateliers à Ouagadougou du <strong>${student.startDate || student.periodStart || '2026-06-01'}</strong> au <strong>${student.endDate || student.periodEnd || '2026-08-01'}</strong>.
             </div>
 
             <!-- BLOC COMPÉTENCES PERSONNALISABLES -->
@@ -1394,11 +1402,11 @@ class LSSApp {
             <table class="footer-table">
               <tr>
                 <td class="footer-date">
-                  Fait à Ouagadougou, le <strong>${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+                  Fait à Ouagadougou, le <strong>${student.issueDate || new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
                 </td>
                 <td class="footer-signature">
                   <div class="role">LE PROMOTEUR</div>
-                  <div class="name">ZABRE S. Constantin</div>
+                  <div class="name">${student.promoterName || (this.db && this.db.settings && this.db.settings.promoterName ? this.db.settings.promoterName : 'ZABRE S. Constantin')}</div>
                   <div class="sub">(Cachet & Signature Officiels)</div>
                 </td>
               </tr>
