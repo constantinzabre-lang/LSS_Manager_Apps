@@ -188,10 +188,21 @@ class LSSApp {
     // Verrouillage systématique au démarrage
     this.lockApp();
 
+    // Synchronisation automatique temps réel multi-postes (Secrétariat, Caisse, Direction)
     this.pullFromSupabase(false);
     setInterval(() => {
       this.pullFromSupabase(false);
-    }, 10000);
+    }, 3000);
+
+    // Synchronisation instantanée dès la reprise en main de la fenêtre/onglet
+    window.addEventListener('focus', () => {
+      this.pullFromSupabase(false);
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        this.pullFromSupabase(false);
+      }
+    });
   }
 
   selectRoleTab(role) {
@@ -2564,7 +2575,19 @@ class LSSApp {
           
           this.lastCloudSyncTime = cloudUpdatedAt || Date.now();
           localStorage.setItem(STORAGE_KEY, JSON.stringify(this.db));
-          this.renderCurrentView();
+          
+          // Rafraîchissement immédiat de toutes les vues de l'application
+          if (typeof this.renderCurrentView === 'function') this.renderCurrentView();
+          if (typeof this.renderAll === 'function') this.renderAll();
+          if (typeof this.renderStudents === 'function') this.renderStudents();
+          if (typeof this.renderTickets === 'function') this.renderTickets();
+          if (typeof this.renderInvoices === 'function') this.renderInvoices();
+          if (typeof this.renderExpenses === 'function') this.renderExpenses();
+          if (typeof this.renderDebts === 'function') this.renderDebts();
+          if (typeof this.renderProjects === 'function') this.renderProjects();
+          if (typeof this.renderClients === 'function') this.renderClients();
+          if (typeof this.renderProducts === 'function') this.renderProducts();
+          if (typeof this.updateDashboard === 'function') this.updateDashboard();
           
           this.lastSyncError = null;
           const statusElem = document.getElementById('sync-status');
