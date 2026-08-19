@@ -188,6 +188,10 @@ class LSSApp {
     // Verrouillage systématique au démarrage
     this.lockApp();
 
+    // Initialisation du client SDK Supabase et chargement Realtime
+    this.initSupabaseClient();
+    this.loadFromCloud();
+
     // Synchronisation automatique temps réel multi-postes (Secrétariat, Caisse, Direction)
     this.pullFromSupabase(false);
     setInterval(() => {
@@ -196,10 +200,12 @@ class LSSApp {
 
     // Synchronisation instantanée dès la reprise en main de la fenêtre/onglet
     window.addEventListener('focus', () => {
+      this.loadFromCloud();
       this.pullFromSupabase(false);
     });
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
+        this.loadFromCloud();
         this.pullFromSupabase(false);
       }
     });
@@ -2382,17 +2388,128 @@ class LSSApp {
     alert("✅ Réinitialisation effectuée avec succès.\nUn fichier de sauvegarde automatique a été téléchargé sur votre Mac.");
   }
 
+  initSupabaseClient() {
+    let { supabaseUrl, supabaseKey } = (this.db && this.db.settings) ? this.db.settings : {};
+    const envUrl = (typeof window !== 'undefined' && window.ENV_SUPABASE_URL) ? window.ENV_SUPABASE_URL : '';
+    const envKey = (typeof window !== 'undefined' && window.ENV_SUPABASE_KEY) ? window.ENV_SUPABASE_KEY : '';
+    supabaseUrl = supabaseUrl || envUrl;
+    supabaseKey = supabaseKey || envKey;
+
+    if (supabaseUrl && supabaseKey && window.supabase && typeof window.supabase.createClient === 'function') {
+      try {
+        supabaseUrl = supabaseUrl.trim().replace(/\/$/, '');
+        if (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
+          supabaseUrl = 'https://' + supabaseUrl;
+        }
+        supabaseKey = supabaseKey.trim();
+        this.supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+        this.initRealtimeSync();
+      } catch (err) {
+        console.warn('[Supabase Client Init Warning]', err);
+      }
+    }
+  }
+
+  // 1. CHARGEMENT INITIAL DEPUIS LE CLOUD SUPABASE
+  async loadFromCloud() {
+    if (!this.supabaseClient) this.initSupabaseClient();
+    if (!this.supabaseClient) return;
+    try {
+      let { data, error } = await this.supabaseClient
+        .from('lss_data')
+        .select('payload')
+        .eq('id', 'main_db')
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        // Tentative de repli sur app_sync
+        const altRes = await this.supabaseClient
+          .from('app_sync')
+          .select('data')
+          .eq('id', 'lss_main_db')
+          .single();
+        if (altRes.data && altRes.data.data) {
+          data = { payload: altRes.data.data };
+          error = null;
+        }
+      }
+
+      if (error && error.code !== 'PGRST116') {
+        console.error("Erreur lecture Supabase:", error);
+        return;
+      }
+
+      if (data && data.payload) {
+        // Fusion intelligente anti-écrasement
+        this.db = this.mergeDatabases(this.db, data.payload);
+        this.saveToStorage(); // Met à jour le cache local
+        this.renderAll();     // Réactualise l'interface
+      }
+    } catch (err) {
+      console.error("Échec chargement Cloud:", err);
+    }
+  }
+
+  // 2. ENVOI DES DONNÉES VERS SUPABASE À CHAQUE ENREGISTREMENT
+  async syncWithCloud() {
+    if (!this.supabaseClient) this.initSupabaseClient();
+    if (!this.supabaseClient) {
+      this.syncToSupabase();
+      return;
+    }
+    try {
+      // Pré-fusion préalable avant envoi pour préserver toutes les données secrétariat
+      await this.loadFromCloud();
+
+      const { error } = await this.supabaseClient
+        .from('lss_data')
+        .upsert({ id: 'main_db', payload: this.db, updated_at: new Date().toISOString() });
+
+      if (error) {
+        this.syncToSupabase();
+      }
+    } catch (err) {
+      console.error("Échec envoi Cloud:", err);
+      this.syncToSupabase();
+    }
+  }
+
+  // 3. ÉCOUTE TEMPS RÉEL (REALTIME) SUR LES DEUX POSTES
+  initRealtimeSync() {
+    if (!this.supabaseClient) return;
+
+    try {
+      this.supabaseClient
+        .channel('public:lss_data')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'lss_data' }, (payload) => {
+          if (payload.new && payload.new.payload) {
+            // Si l'autre machine a écrit des données, on synchronise immédiatement avec fusion
+            this.db = this.mergeDatabases(this.db, payload.new.payload);
+            this.saveToStorage();
+            this.renderAll();
+          }
+        })
+        .subscribe();
+    } catch (e) {
+      console.warn("Realtime sync channel warning:", e);
+    }
+  }
+
   saveToStorage() {
     this.saveDatabase();
   }
 
-  syncWithCloud() {
-    this.syncToSupabase();
-  }
-
   renderAll() {
     this.renderCurrentView();
+    if (typeof this.renderStudents === 'function') this.renderStudents();
+    if (typeof this.renderTickets === 'function') this.renderTickets();
+    if (typeof this.renderInvoices === 'function') this.renderInvoices();
+    if (typeof this.renderExpenses === 'function') this.renderExpenses();
     if (typeof this.renderDebts === 'function') this.renderDebts();
+    if (typeof this.renderProjects === 'function') this.renderProjects();
+    if (typeof this.renderClients === 'function') this.renderClients();
+    if (typeof this.renderProducts === 'function') this.renderProducts();
+    if (typeof this.updateDashboard === 'function') this.updateDashboard();
   }
 
   purgeAllData() {
