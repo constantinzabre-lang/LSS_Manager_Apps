@@ -2594,11 +2594,11 @@ class LSSApp {
   }
 
   async syncToSupabase() {
-    let { supabaseUrl, supabaseKey } = this.db.settings;
+    let { supabaseUrl, supabaseKey } = (this.db && this.db.settings) ? this.db.settings : {};
     const envUrl = (typeof window !== 'undefined' && window.ENV_SUPABASE_URL) ? window.ENV_SUPABASE_URL : '';
     const envKey = (typeof window !== 'undefined' && window.ENV_SUPABASE_KEY) ? window.ENV_SUPABASE_KEY : '';
-    supabaseUrl = supabaseUrl || envUrl;
-    supabaseKey = supabaseKey || envKey;
+    supabaseUrl = supabaseUrl || envUrl || DEFAULT_SUPABASE_URL;
+    supabaseKey = supabaseKey || envKey || DEFAULT_SUPABASE_KEY;
 
     const statusElem = document.getElementById('sync-status');
     
@@ -2633,11 +2633,8 @@ class LSSApp {
       }
 
       const nowIso = new Date().toISOString();
-      const payload = {
-        id: 'lss_main_db',
-        data: this.db,
-        updated_at: nowIso
-      };
+      const payloadAppSync = { id: 'lss_main_db', data: this.db, updated_at: nowIso };
+      const payloadLssData = { id: 'main_db', payload: this.db, updated_at: nowIso };
 
       let res = await fetch(`${supabaseUrl}/rest/v1/app_sync?on_conflict=id`, {
         method: 'POST',
@@ -2647,7 +2644,7 @@ class LSSApp {
           'Content-Type': 'application/json',
           'Prefer': 'resolution=merge-duplicates, return=representation'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payloadAppSync)
       });
 
       if (!res.ok) {
@@ -2658,17 +2655,29 @@ class LSSApp {
             'Authorization': `Bearer ${supabaseKey}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payloadAppSync)
         });
       }
+
+      // Synchronisation parallèle sur lss_data
+      fetch(`${supabaseUrl}/rest/v1/lss_data?on_conflict=id`, {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify(payloadLssData)
+      }).catch(e => console.warn('[lss_data optional sync warning]', e));
 
       if (res.ok) {
         this.lastSyncError = null;
         this.lastCloudSyncTime = Date.now();
         this.lastLocalUpdate = Date.now();
         if (statusElem) {
-          statusElem.style.cursor = 'default';
-          statusElem.onclick = null;
+          statusElem.style.cursor = 'pointer';
+          statusElem.onclick = () => this.pullFromSupabase(true);
           statusElem.innerHTML = '<span class="status-dot" style="background: #22c55e;"></span><span>Cloud Synchro OK</span>';
         }
       } else {
@@ -2701,11 +2710,11 @@ class LSSApp {
   }
 
   async pullFromSupabase(isManual = false) {
-    let { supabaseUrl, supabaseKey } = this.db.settings;
+    let { supabaseUrl, supabaseKey } = (this.db && this.db.settings) ? this.db.settings : {};
     const envUrl = (typeof window !== 'undefined' && window.ENV_SUPABASE_URL) ? window.ENV_SUPABASE_URL : '';
     const envKey = (typeof window !== 'undefined' && window.ENV_SUPABASE_KEY) ? window.ENV_SUPABASE_KEY : '';
-    supabaseUrl = supabaseUrl || envUrl;
-    supabaseKey = supabaseKey || envKey;
+    supabaseUrl = supabaseUrl || envUrl || DEFAULT_SUPABASE_URL;
+    supabaseKey = supabaseKey || envKey || DEFAULT_SUPABASE_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
       if (isManual) alert('⚠️ Supabase non configuré.\n\nPour partager les données entre plusieurs appareils, veuillez renseigner l\'URL et la Clé API Supabase dans Paramètres sur CHACUN des appareils.');
@@ -2719,63 +2728,61 @@ class LSSApp {
     supabaseKey = supabaseKey.trim();
 
     try {
-      const res = await fetch(`${supabaseUrl}/rest/v1/app_sync?id=eq.lss_main_db&select=data,updated_at`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`
-        }
+      let cloudDb = null;
+      let cloudUpdatedAt = 0;
+
+      // Lecture 1 : Table app_sync (lss_main_db)
+      const resAppSync = await fetch(`${supabaseUrl}/rest/v1/app_sync?id=eq.lss_main_db&select=data,updated_at`, {
+        headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
       });
-
-      if (res.ok) {
-        const rows = await res.json();
+      if (resAppSync.ok) {
+        const rows = await resAppSync.json();
         if (rows && rows.length > 0 && rows[0].data) {
-          const cloudDb = rows[0].data;
-          const cloudUpdatedAt = rows[0].updated_at ? new Date(rows[0].updated_at).getTime() : 0;
-
-          const hasActiveModal = !!document.querySelector('.modal-overlay.active, .modal.active, [id$="-modal"][style*="flex"]');
-          if (!isManual && hasActiveModal) {
-            return;
-          }
-
-          // Fusion intelligente pour préserver TOUTES les données secrétariat et multi-postes
-          this.db = this.mergeDatabases(this.db, cloudDb);
-          
-          this.lastCloudSyncTime = cloudUpdatedAt || Date.now();
-          this.lastLocalUpdate = Date.now();
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(this.db));
-          
-          // Rafraîchissement immédiat de toutes les vues de l'application
-          if (typeof this.renderCurrentView === 'function') this.renderCurrentView();
-          if (typeof this.renderAll === 'function') this.renderAll();
-          if (typeof this.renderStudents === 'function') this.renderStudents();
-          if (typeof this.renderTickets === 'function') this.renderTickets();
-          if (typeof this.renderInvoices === 'function') this.renderInvoices();
-          if (typeof this.renderExpenses === 'function') this.renderExpenses();
-          if (typeof this.renderDebts === 'function') this.renderDebts();
-          if (typeof this.renderProjects === 'function') this.renderProjects();
-          if (typeof this.renderClients === 'function') this.renderClients();
-          if (typeof this.renderProducts === 'function') this.renderProducts();
-          if (typeof this.updateDashboard === 'function') this.updateDashboard();
-          
-          this.lastSyncError = null;
-          const statusElem = document.getElementById('sync-status');
-          if (statusElem) {
-            statusElem.style.cursor = 'default';
-            statusElem.onclick = null;
-            statusElem.innerHTML = '<span class="status-dot" style="background: #22c55e;"></span><span>Cloud Synchro OK</span>';
-          }
-          
-          if (isManual) alert('✅ Synchronisation réussie ! Tous les tickets, factures et données des autres appareils sont à jour.');
-        } else {
-          if (isManual) alert('ℹ️ La base Cloud est vide pour le moment. Enregistrez un document sur l\'un de vos appareils pour l\'envoyer au Cloud.');
+          cloudDb = rows[0].data;
+          cloudUpdatedAt = rows[0].updated_at ? new Date(rows[0].updated_at).getTime() : Date.now();
         }
+      }
+
+      // Lecture 2 : Table lss_data (main_db)
+      const resLssData = await fetch(`${supabaseUrl}/rest/v1/lss_data?id=eq.main_db&select=payload,updated_at`, {
+        headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+      });
+      if (resLssData.ok) {
+        const rows2 = await resLssData.json();
+        if (rows2 && rows2.length > 0 && rows2[0].payload) {
+          cloudDb = this.mergeDatabases(cloudDb, rows2[0].payload);
+          const t2 = rows2[0].updated_at ? new Date(rows2[0].updated_at).getTime() : Date.now();
+          if (t2 > cloudUpdatedAt) cloudUpdatedAt = t2;
+        }
+      }
+
+      if (cloudDb) {
+        const hasActiveModal = !!document.querySelector('.modal-overlay.active, .modal.active, [id$="-modal"][style*="flex"]');
+        if (!isManual && hasActiveModal) {
+          return;
+        }
+
+        // Fusion intelligente sans perte
+        this.db = this.mergeDatabases(this.db, cloudDb);
+        
+        this.lastCloudSyncTime = cloudUpdatedAt || Date.now();
+        this.lastLocalUpdate = Date.now();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.db));
+        
+        // Rafraîchissement immédiat de toutes les vues de l'application
+        this.renderAll();
+        
+        this.lastSyncError = null;
+        const statusElem = document.getElementById('sync-status');
+        if (statusElem) {
+          statusElem.style.cursor = 'pointer';
+          statusElem.onclick = () => this.pullFromSupabase(true);
+          statusElem.innerHTML = '<span class="status-dot" style="background: #22c55e;"></span><span>Cloud Synchro OK</span>';
+        }
+        
+        if (isManual) alert('✅ Synchronisation réussie ! Tous les tickets, factures et données des autres appareils sont à jour.');
       } else {
-        const errText = await res.text();
-        console.warn('[Supabase Pull Fail]', res.status, errText);
-        this.lastSyncError = { status: res.status, text: errText };
-        if (isManual) {
-          this.showSyncDiagnostics();
-        }
+        if (isManual) alert('ℹ️ Aucune donnée trouvée sur le Cloud. Enregistrez un document sur l\'un de vos appareils pour lancer le partage.');
       }
     } catch (err) {
       console.warn('[Supabase Pull Error]', err);
