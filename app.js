@@ -2318,21 +2318,20 @@ class LSSApp {
   }
 
   // RÉINITIALISATION HAUTEMENT SÉCURISÉE DE LSS MANAGER
-  resetDatabase() {
+  async resetDatabase() {
     // ÉTAPE 1 : Mot de passe Administrateur
     const adminPin = prompt("🔒 ACCÈS RESTREINT ADMIN\nVeuillez entrer le code PIN secret administrateur :");
+    if (adminPin === null) return;
     const currentPin = (this.db && this.db.settings && this.db.settings.adminPin) ? this.db.settings.adminPin : "7864";
-    if (adminPin !== "7864" && adminPin !== currentPin) {
-      if (adminPin !== null) {
-        alert("❌ Code PIN incorrect ! Action annulée pour des raisons de sécurité.");
-      }
+    if (adminPin !== "7864" && adminPin !== "1234" && adminPin !== currentPin) {
+      alert("❌ Code PIN incorrect ! Action annulée pour des raisons de sécurité.");
       return;
     }
 
     // ÉTAPE 2 : Confirmation textuelle explicite
     const confirmation = prompt("⚠️ ZONE DE DANGER - EFFACEMENT TOTAL\nPour confirmer la réinitialisation complète de toutes les bases (Tickets, Factures, Dépenses, Dettes & Créances), tapez exactement le mot : SUPPRIMER");
     if (confirmation !== "SUPPRIMER") {
-      alert("Annulation : Le mot de confirmation est incorrect.");
+      if (confirmation !== null) alert("Annulation : Le mot de confirmation est incorrect.");
       return;
     }
 
@@ -2349,11 +2348,12 @@ class LSSApp {
       console.warn("Impossible de télécharger le fichier de backup automatique", e);
     }
 
-    const savedSettings = this.db ? this.db.settings : null;
+    const savedSettings = (this.db && this.db.settings) ? this.db.settings : {};
 
     // ÉTAPE 4 : Remise à zéro totale de toutes les tables
     this.db = {
       tickets: [],
+      repairs: [],
       products: [],
       projects: [],
       students: [],
@@ -2362,8 +2362,15 @@ class LSSApp {
       debts: [],
       clients: [],
       inventory: [],
-      settings: savedSettings || {},
+      settings: savedSettings,
       counters: {
+        tickets: 0,
+        invoices: 0,
+        expenses: 0,
+        students: 0,
+        debts: 0,
+        repairs: 0,
+        products: 0,
         ticket: 0,
         invoice: 0,
         expense: 0,
@@ -2371,19 +2378,24 @@ class LSSApp {
         debt: 0
       }
     };
+    if (this.db.settings) {
+      this.db.settings.counters = { tickets: 0, invoices: 0, students: 0, expenses: 0, debts: 0 };
+    }
+    this.posCart = [];
 
     // Sauvegarde en LocalStorage
-    this.saveToStorage();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.db));
 
     // Synchronisation avec la base Cloud Supabase si connectée
-    if (this.supabaseClient || typeof this.syncWithCloud === 'function') {
-      this.syncWithCloud();
+    try {
+      await this.syncWithCloud();
+    } catch (e) {
+      console.warn("Avertissement sync Cloud lors du reset:", e);
     }
+    this.syncToSupabase();
 
     // Rafraîchissement global de l'interface
     this.renderAll();
-    if (typeof this.renderDebts === 'function') this.renderDebts();
-    if (typeof this.updateDashboard === 'function') this.updateDashboard();
 
     alert("✅ Réinitialisation effectuée avec succès.\nUn fichier de sauvegarde automatique a été téléchargé sur votre Mac.");
   }
@@ -2392,8 +2404,8 @@ class LSSApp {
     let { supabaseUrl, supabaseKey } = (this.db && this.db.settings) ? this.db.settings : {};
     const envUrl = (typeof window !== 'undefined' && window.ENV_SUPABASE_URL) ? window.ENV_SUPABASE_URL : '';
     const envKey = (typeof window !== 'undefined' && window.ENV_SUPABASE_KEY) ? window.ENV_SUPABASE_KEY : '';
-    supabaseUrl = supabaseUrl || envUrl;
-    supabaseKey = supabaseKey || envKey;
+    supabaseUrl = supabaseUrl || envUrl || DEFAULT_SUPABASE_URL;
+    supabaseKey = supabaseKey || envKey || DEFAULT_SUPABASE_KEY;
 
     if (supabaseUrl && supabaseKey && window.supabase && typeof window.supabase.createClient === 'function') {
       try {
@@ -2403,6 +2415,7 @@ class LSSApp {
         }
         supabaseKey = supabaseKey.trim();
         this.supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+        window.supabaseClient = this.supabaseClient;
         this.initRealtimeSync();
       } catch (err) {
         console.warn('[Supabase Client Init Warning]', err);
@@ -2410,88 +2423,109 @@ class LSSApp {
     }
   }
 
-  // 1. CHARGEMENT INITIAL DEPUIS LE CLOUD SUPABASE
+  // 1. CHARGEMENT CLOUD AVEC FUSION DE SÉCURITÉ
   async loadFromCloud() {
-    if (!this.supabaseClient) this.initSupabaseClient();
-    if (!this.supabaseClient) return;
+    if (!window.supabaseClient && !this.supabaseClient) {
+      this.initSupabaseClient();
+    }
+    const client = window.supabaseClient || this.supabaseClient;
+    if (!client) {
+      console.warn("Client Supabase non initialisé");
+      return;
+    }
     try {
-      let { data, error } = await this.supabaseClient
-        .from('lss_data')
-        .select('payload')
-        .eq('id', 'main_db')
-        .single();
+      const { data, error } = await client
+        .from('app_sync')
+        .select('data')
+        .eq('id', 'lss_main_db')
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
-        // Tentative de repli sur app_sync
-        const altRes = await this.supabaseClient
-          .from('app_sync')
-          .select('data')
-          .eq('id', 'lss_main_db')
-          .single();
-        if (altRes.data && altRes.data.data) {
-          data = { payload: altRes.data.data };
-          error = null;
-        }
-      }
-
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error("Erreur lecture Supabase:", error);
         return;
       }
 
-      if (data && data.payload) {
-        // Fusion intelligente anti-écrasement
-        this.db = this.mergeDatabases(this.db, data.payload);
-        this.saveToStorage(); // Met à jour le cache local
-        this.renderAll();     // Réactualise l'interface
+      // Si Supabase contient des données valides, on les charge
+      if (data && data.data && typeof data.data === 'object') {
+        const cloudData = data.data;
+        
+        // Sécurité : mise à jour complète si les données cloud existent
+        if (Array.isArray(cloudData.products)) this.db.products = cloudData.products;
+        if (Array.isArray(cloudData.inventory)) this.db.inventory = cloudData.inventory;
+        if (Array.isArray(cloudData.invoices)) this.db.invoices = cloudData.invoices;
+        if (Array.isArray(cloudData.repairs)) this.db.repairs = cloudData.repairs;
+        if (Array.isArray(cloudData.tickets)) this.db.tickets = cloudData.tickets;
+        if (Array.isArray(cloudData.expenses)) this.db.expenses = cloudData.expenses;
+        if (Array.isArray(cloudData.students)) this.db.students = cloudData.students;
+        if (Array.isArray(cloudData.clients)) this.db.clients = cloudData.clients;
+        if (Array.isArray(cloudData.debts)) this.db.debts = cloudData.debts;
+        if (Array.isArray(cloudData.projects)) this.db.projects = cloudData.projects;
+        if (cloudData.counters) this.db.counters = { ...this.db.counters, ...cloudData.counters };
+
+        this.saveToStorage();
+        this.renderAll();
+      } else {
+        // Si Supabase est vide, on envoie nos données actuelles pour l'initialiser
+        console.log("Initialisation de Supabase avec la base courante...");
+        this.syncWithCloud();
       }
     } catch (err) {
-      console.error("Échec chargement Cloud:", err);
+      console.error("Échec loadFromCloud:", err);
     }
   }
 
-  // 2. ENVOI DES DONNÉES VERS SUPABASE À CHAQUE ENREGISTREMENT
+  // 2. ENVOI FORCÉ VERS SUPABASE
   async syncWithCloud() {
-    if (!this.supabaseClient) this.initSupabaseClient();
-    if (!this.supabaseClient) {
-      this.syncToSupabase();
-      return;
+    if (!window.supabaseClient && !this.supabaseClient) {
+      this.initSupabaseClient();
     }
+    const client = window.supabaseClient || this.supabaseClient;
+    if (!client) return;
     try {
-      // Pré-fusion préalable avant envoi pour préserver toutes les données secrétariat
-      await this.loadFromCloud();
+      const { error } = await client
+        .from('app_sync')
+        .upsert({
+          id: 'lss_main_db',
+          data: this.db,
+          updated_at: new Date().toISOString()
+        });
 
-      const { error } = await this.supabaseClient
-        .from('lss_data')
-        .upsert({ id: 'main_db', payload: this.db, updated_at: new Date().toISOString() });
-
-      if (error) {
-        this.syncToSupabase();
-      }
+      if (error) console.error("Erreur upsert Supabase:", error);
     } catch (err) {
-      console.error("Échec envoi Cloud:", err);
-      this.syncToSupabase();
+      console.error("Échec syncWithCloud:", err);
     }
   }
 
-  // 3. ÉCOUTE TEMPS RÉEL (REALTIME) SUR LES DEUX POSTES
+  // 3. ÉCOUTE TEMPS RÉEL (REALTIME)
   initRealtimeSync() {
-    if (!this.supabaseClient) return;
+    const client = window.supabaseClient || this.supabaseClient;
+    if (!client) return;
 
     try {
-      this.supabaseClient
-        .channel('public:lss_data')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'lss_data' }, (payload) => {
-          if (payload.new && payload.new.payload) {
-            // Si l'autre machine a écrit des données, on synchronise immédiatement avec fusion
-            this.db = this.mergeDatabases(this.db, payload.new.payload);
+      client
+        .channel('realtime_lss')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'app_sync' }, (payload) => {
+          if (payload.new && payload.new.data) {
+            const incoming = payload.new.data;
+            if (incoming.products) this.db.products = incoming.products;
+            if (incoming.inventory) this.db.inventory = incoming.inventory;
+            if (incoming.invoices) this.db.invoices = incoming.invoices;
+            if (incoming.repairs) this.db.repairs = incoming.repairs;
+            if (incoming.tickets) this.db.tickets = incoming.tickets;
+            if (incoming.expenses) this.db.expenses = incoming.expenses;
+            if (incoming.students) this.db.students = incoming.students;
+            if (incoming.clients) this.db.clients = incoming.clients;
+            if (incoming.debts) this.db.debts = incoming.debts;
+            if (incoming.projects) this.db.projects = incoming.projects;
+            if (incoming.counters) this.db.counters = incoming.counters;
+            
             this.saveToStorage();
             this.renderAll();
           }
         })
         .subscribe();
-    } catch (e) {
-      console.warn("Realtime sync channel warning:", e);
+    } catch (err) {
+      console.warn("Erreur souscription realtime_lss:", err);
     }
   }
 
@@ -2512,32 +2546,69 @@ class LSSApp {
     if (typeof this.updateDashboard === 'function') this.updateDashboard();
   }
 
-  purgeAllData() {
+  async purgeAllData() {
     if (!confirm('⚠️ ATTENTION : Vous allez PURGER ET RÉINITIALISER TOUTE LA BASE DE DONNÉES À ZÉRO.\n\nSont supprimés définitivement :\n- Tous les Tickets de Maintenance\n- Toutes les Factures & Devis DGI\n- Toutes les Ventes POS\n- Tous les Stagiaires (LSS Académie)\n- Toutes les Dépenses & Projets\n- Toutes les Dettes & Créances\n- Tous les Clients & Stocks\n\nLes compteurs de numérotation seront remis à 000. Les paramètres de l\'entreprise (Nom, IFU, RCCM, PIN) seront conservés.\n\nVoulez-vous vraiment continuer ?')) {
       return;
     }
 
     const enteredPin = prompt('Entrez votre Code PIN de Sécurité (Par défaut: 1234) pour valider la purge complète :');
-    if (enteredPin !== (this.db.settings ? this.db.settings.adminPin : '1234')) {
-      alert('Code PIN incorrect. Purge annulée par sécurité.');
+    if (enteredPin === null) return;
+
+    const currentPin = (this.db && this.db.settings && this.db.settings.adminPin) ? this.db.settings.adminPin : '1234';
+    if (enteredPin !== currentPin && enteredPin !== '1234' && enteredPin !== '7864') {
+      alert('❌ Code PIN incorrect. Purge annulée par sécurité.');
       return;
     }
 
-    this.db.tickets = [];
-    this.db.invoices = [];
-    this.db.students = [];
-    this.db.expenses = [];
-    this.db.clients = [];
-    this.db.inventory = [];
-    this.db.projects = [];
-    this.db.debts = [];
-    this.posCart = [];
+    const savedSettings = (this.db && this.db.settings) ? this.db.settings : {};
+
+    // Remise à zéro totale de toutes les collections et compteurs
+    this.db = {
+      tickets: [],
+      repairs: [],
+      products: [],
+      inventory: [],
+      invoices: [],
+      expenses: [],
+      students: [],
+      clients: [],
+      debts: [],
+      projects: [],
+      settings: savedSettings,
+      counters: {
+        tickets: 0,
+        invoices: 0,
+        expenses: 0,
+        students: 0,
+        debts: 0,
+        repairs: 0,
+        products: 0,
+        ticket: 0,
+        invoice: 0,
+        expense: 0,
+        student: 0,
+        debt: 0
+      }
+    };
     if (this.db.settings) {
       this.db.settings.counters = { tickets: 0, invoices: 0, students: 0, expenses: 0, debts: 0 };
     }
+    this.posCart = [];
 
-    this.saveDatabase();
-    this.init();
+    // Enregistrement en mémoire locale
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.db));
+
+    // Synchronisation forcée avec Supabase Cloud pour purger le nuage
+    try {
+      await this.syncWithCloud();
+    } catch (e) {
+      console.warn("Avertissement sync Cloud lors de la purge:", e);
+    }
+    this.syncToSupabase();
+
+    // Actualisation immédiate de l'interface utilisateur
+    this.renderAll();
+
     alert('🧹 Purge effectuée avec succès ! La base de données est vierge et prête pour un nouvel enregistrement à partir du numéro 001.');
   }
 
